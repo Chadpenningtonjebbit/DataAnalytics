@@ -28,7 +28,7 @@ interface NumericInputProps {
 export function NumericInput({
   value,
   onChange,
-  className = "w-20",
+  className = "w-32",
   placeholder = "0px",
   min = 0,
   max = 1000,

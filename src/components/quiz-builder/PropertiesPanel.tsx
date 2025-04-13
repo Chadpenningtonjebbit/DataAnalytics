@@ -485,7 +485,7 @@ export function PropertiesPanel() {
               }}
             />
             <NumericInput 
-              className="w-16" 
+              className="w-24" 
               value={firstElement?.type === 'button' 
                 ? commonProperties.styles?.padding?.toString().split(' ')[0] || '0px'
                 : commonProperties.styles?.padding || '0px'
@@ -571,7 +571,7 @@ export function PropertiesPanel() {
                 }}
               />
               <NumericInput 
-                className="w-16" 
+                className="w-24" 
                 value={commonProperties.styles?.fontSize || '16px'} 
                 onChange={(value) => handleStyleChange('fontSize', value)} 
               />
@@ -648,7 +648,7 @@ export function PropertiesPanel() {
               }}
             />
             <NumericInput 
-              className="w-16" 
+              className="w-24" 
               value={commonProperties.styles?.borderRadius || '0px'} 
               onChange={(value) => handleStyleChange('borderRadius', value)} 
             />
@@ -684,7 +684,7 @@ export function PropertiesPanel() {
               }}
             />
             <NumericInput 
-              className="w-16" 
+              className="w-24" 
               value={
                 commonProperties.styles?.border === 'none' 
                   ? '0px' 

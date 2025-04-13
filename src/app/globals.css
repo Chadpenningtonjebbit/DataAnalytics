@@ -608,6 +608,8 @@ div[data-dnd-kit-draggable] {
   bottom: 0;
   border-radius: inherit;
   pointer-events: none;
+  /* Remove any default border - only apply borders in .hovered and .selected states */
+  border-color: transparent;
 }
 
 

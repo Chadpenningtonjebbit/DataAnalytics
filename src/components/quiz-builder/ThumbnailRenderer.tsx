@@ -80,7 +80,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
             button {
               padding: 8px 16px;
               border-radius: 4px;
-              background-color: #355DF9;
+              background-color: #000000;
               color: white;
               border: none;
               font-family: Arial, sans-serif;
@@ -200,6 +200,23 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
       setIsRendering(false);
     }
   }, [screen, onRender, isRendering, hasRendered]);
+  
+  // Check if screen content changed and force re-render
+  useEffect(() => {
+    // Create a simple hash of the screen contents to detect changes
+    const screenHash = JSON.stringify({
+      header: screen.sections.header.elements,
+      body: screen.sections.body.elements,
+      footer: screen.sections.footer.elements
+    });
+    
+    // Reset hasRendered when screen content changes
+    setHasRendered(false);
+  }, [
+    screen.sections.header.elements,
+    screen.sections.body.elements, 
+    screen.sections.footer.elements
+  ]);
   
   // Check if screen ID changed
   useEffect(() => {

@@ -151,21 +151,12 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     dataAttrs['data-percent-height'] = 'true'; 
   }
   
-  // Add border when hovering
-  const borderStyle = isHovered 
-    ? { outline: '2px solid #3b82f6', outlineOffset: '2px' } 
-    : {};
-  
-  // Highlight selected elements
-  const selectionStyle = selectedElementIds.includes(element.id)
-    ? { outline: '2px solid #3b82f6', outlineOffset: '2px', zIndex: 30 }
-    : {};
+  // We'll rely on CSS classes for hover and selection styles
+  // instead of inline styles to avoid duplicating borders
   
   // Combine all styles
   const combinedStyle = {
     ...style,
-    ...borderStyle,
-    ...selectionStyle,
     // Apply element's specific styling directly at top level
     fontFamily: element.styles?.fontFamily,
     fontSize: element.styles?.fontSize,
@@ -178,7 +169,9 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     border: element.styles?.border,
     borderRadius: element.styles?.borderRadius,
     margin: element.styles?.margin,
-    boxSizing: 'border-box' as const
+    boxSizing: 'border-box' as const,
+    // Add zIndex for selected elements to ensure proper layering
+    zIndex: selectedElementIds.includes(element.id) ? 30 : undefined
   };
   
   // Handle click with hierarchical selection

@@ -679,7 +679,7 @@ export const useQuizStore = create<QuizState>()(
         defaultStyles = {
           padding: '8px 16px',
           borderRadius: '4px',
-          backgroundColor: '#355DF9',
+          backgroundColor: '#000000',
           color: 'white',
           fontSize: '16px',
           fontWeight: '400',
@@ -773,7 +773,7 @@ export const useQuizStore = create<QuizState>()(
           flexDirection: 'column',
           gap: '8px',
           padding: '16px',
-          border: '1px dashed #ccc',
+          border: '0px solid transparent',
           borderRadius: '4px'
         };
         defaultAttributes = { 

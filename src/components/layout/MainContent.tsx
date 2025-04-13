@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -8,7 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Monitor, Tablet, Smartphone, Plus, Undo, Redo, Trash2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, Maximize, Minimize } from 'lucide-react';
+import { Monitor, Tablet, Smartphone, Plus, Undo, Redo, Trash2, ChevronRight, ChevronLeft, ZoomIn, ZoomOut, Maximize, Minimize, PencilIcon } from 'lucide-react';
 import { DroppableArea } from '@/components/quiz-builder/DroppableArea';
 import { useQuizStore } from '@/store/useQuizStore';
 import { ElementRenderer } from '@/components/quiz-builder/ElementRenderer';
@@ -39,7 +39,9 @@ export function MainContent() {
     groupSelectedElements,
     ungroupElements,
     removeSelectedElements,
-    reorderElement
+    reorderElement,
+    setQuiz,
+    saveToHistory
   } = useQuizStore();
   
   const { theme } = useTheme();
@@ -78,27 +80,104 @@ export function MainContent() {
   // Define device sizes
   const deviceSizes = useMemo(() => ({
     desktop: {
-      width: 'w-full max-w-[1280px]', // Common desktop width
-      minWidth: 'min-w-[768px]', // Minimum desktop width
-      height: 'h-full max-h-[800px]', // Reasonable height for desktop
-      minHeight: 'min-h-[600px]', // Minimum height
-      aspectRatio: 'aspect-[16/10]', // Common desktop aspect ratio
+      maxWidth: 1280, // Common desktop width
+      minWidth: 768, // Minimum desktop width
+      maxHeight: 800, // Reasonable height for desktop
+      minHeight: 600, // Minimum height
+      aspectRatio: 16/10, // Common desktop aspect ratio
     },
     tablet: {
-      width: 'w-full max-w-[768px]', // Common tablet width (iPad)
-      minWidth: 'min-w-[640px]', // Minimum tablet width
-      height: 'h-full max-h-[1024px]', // Common tablet height
-      minHeight: 'min-h-[600px]', // Minimum height
-      aspectRatio: 'aspect-[4/3]', // Common tablet aspect ratio
+      maxWidth: 768, // Common tablet width (iPad)
+      minWidth: 640, // Minimum tablet width
+      maxHeight: 1024, // Common tablet height
+      minHeight: 600, // Minimum height
+      aspectRatio: 4/3, // Common tablet aspect ratio
     },
     mobile: {
-      width: 'w-full max-w-[390px]', // Common mobile width (iPhone 12/13/14)
-      minWidth: 'min-w-[320px]', // Minimum mobile width
-      height: 'h-full max-h-[844px]', // Common mobile height
-      minHeight: 'min-h-[568px]', // Minimum height (iPhone SE)
-      aspectRatio: 'aspect-[9/19.5]', // Common mobile aspect ratio
+      maxWidth: 390, // Common mobile width (iPhone 12/13/14)
+      minWidth: 320, // Minimum mobile width
+      maxHeight: 844, // Common mobile height
+      minHeight: 568, // Minimum height (iPhone SE)
+      aspectRatio: 9/19.5, // Common mobile aspect ratio
     }
   }), []);
+  
+  // Calculate available space for the device
+  const [availableWidth, setAvailableWidth] = useState(0);
+  const [availableHeight, setAvailableHeight] = useState(0);
+  
+  // Calculate dynamic device dimensions
+  const [deviceDimensions, setDeviceDimensions] = useState({
+    width: 0,
+    height: 0
+  });
+  
+  // Update available space and device dimensions when panels or view mode changes
+  useEffect(() => {
+    const updateDimensions = () => {
+      // Calculate available space (accounting for padding and margins)
+      const mainContentEl = document.querySelector('.flex-1.overflow-auto');
+      if (!mainContentEl) return;
+      
+      const rect = mainContentEl.getBoundingClientRect();
+      const contentPadding = 32; // 16px padding on each side
+      
+      // Calculate the actual available width, accounting for side panels
+      const actualAvailableWidth = rect.width - contentPadding - leftPanelSize - rightPanelSize - (sideGap * 4);
+      const availHeight = rect.height - contentPadding - bottomPanelHeight;
+      
+      setAvailableWidth(actualAvailableWidth);
+      setAvailableHeight(availHeight);
+      
+      // Get current device size configuration
+      const deviceConfig = deviceSizes[viewMode];
+      
+      // Calculate dimensions based on available space and device config
+      let width = Math.min(deviceConfig.maxWidth, actualAvailableWidth);
+      let height = width / deviceConfig.aspectRatio;
+      
+      // If height exceeds available height, scale down based on height
+      if (height > availHeight) {
+        height = availHeight;
+        width = height * deviceConfig.aspectRatio;
+      }
+      
+      // Ensure width and height don't go below minimums, but also don't exceed available space
+      width = Math.min(Math.max(width, deviceConfig.minWidth), actualAvailableWidth);
+      height = Math.min(Math.max(height, deviceConfig.minHeight), availHeight);
+      
+      // Apply zoom factor
+      const zoomFactor = zoomLevel / 100;
+      
+      // Update device dimensions
+      setDeviceDimensions({
+        width: width * zoomFactor,
+        height: height * zoomFactor
+      });
+    };
+    
+    // Initial update
+    updateDimensions();
+    
+    // Add resize event listener
+    window.addEventListener('resize', updateDimensions);
+    
+    // Clean up
+    return () => {
+      window.removeEventListener('resize', updateDimensions);
+    };
+  }, [deviceSizes, viewMode, leftPanelSize, rightPanelSize, bottomPanelHeight, thumbnailsCollapsed, zoomLevel, sideGap]);
+  
+  // Calculate the horizontal offset to center the canvas accounting for unequal panel sizes
+  const horizontalOffset = useMemo(() => {
+    // Calculate the difference between the left and right panel sizes
+    const panelDifference = leftPanelSize - rightPanelSize;
+    
+    // Return half of the difference to adjust the position
+    // If leftPanel is bigger, move canvas right (positive value)
+    // If rightPanel is bigger, move canvas left (negative value)
+    return panelDifference / 2;
+  }, [leftPanelSize, rightPanelSize]);
   
   // Get current device size based on view mode
   const currentDeviceSize = deviceSizes[viewMode];
@@ -336,14 +415,14 @@ export function MainContent() {
     } else {
       setZoomLevel(100);
     }
+    // The dimension recalculation will happen automatically via the useEffect
   };
   
   // Apply zoom to canvas
   const canvasStyle = {
     boxSizing: 'border-box' as const,
-    transform: `scale(${zoomLevel / 100})`,
-    transformOrigin: 'center center',
-    transition: 'transform 0.2s ease'
+    width: `${deviceDimensions.width}px`,
+    height: `${deviceDimensions.height}px`,
   };
   
   // Function to copy a screen
@@ -372,53 +451,141 @@ export function MainContent() {
     setThumbnailsCollapsed(prev => !prev);
   };
   
+  // Function to update screen name
+  const updateScreenName = (name: string) => {
+    const currentScreenId = quiz.screens[quiz.currentScreenIndex].id;
+    const updatedScreens = quiz.screens.map(screen => 
+      screen.id === currentScreenId ? { ...screen, name } : screen
+    );
+    
+    const updatedQuiz = {
+      ...quiz,
+      screens: updatedScreens
+    };
+    
+    // Update the quiz state
+    setQuiz(updatedQuiz);
+    saveToHistory(updatedQuiz);
+  };
+
+  // State for editing screen name
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [screenNameInput, setScreenNameInput] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+  
+  // Update the input value when current screen changes
+  useEffect(() => {
+    setScreenNameInput(quiz.screens[quiz.currentScreenIndex].name);
+  }, [quiz.currentScreenIndex, quiz.screens]);
+  
+  // Handle click outside to save name
+  useEffect(() => {
+    if (!isEditingName) return;
+    
+    const handleClickOutside = (e: MouseEvent) => {
+      if (nameInputRef.current && !nameInputRef.current.contains(e.target as Node)) {
+        if (screenNameInput.trim()) {
+          updateScreenName(screenNameInput);
+        }
+        setIsEditingName(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isEditingName, screenNameInput]);
+  
+  // Focus input when editing starts
+  useEffect(() => {
+    if (isEditingName && nameInputRef.current) {
+      nameInputRef.current.focus();
+      nameInputRef.current.select();
+    }
+  }, [isEditingName]);
+  
+  // We'll only use transitions for thumbnail collapse/expand, not for resizing
+  const getCanvasTransition = () => {
+    return `top 0.3s ease-in-out`;
+  };
+  
   // Update canvas centering when thumbnails collapse/expand
   useEffect(() => {
-    // Allow time for the animation to complete
-    const timer = setTimeout(() => {
-      // Force a resize event to recalculate positions
-      window.dispatchEvent(new Event('resize'));
-    }, 310); // Slightly longer than the transition duration (300ms)
-    
-    return () => clearTimeout(timer);
+    // Force an immediate resize event to recalculate positions when thumbnails are toggled
+    window.dispatchEvent(new Event('resize'));
   }, [thumbnailsCollapsed]);
   
   return (
     <div className="flex flex-col h-full">
       <div 
-        className="flex-1 overflow-auto p-4 md:p-8 flex items-center justify-center relative transition-all duration-300 ease-in-out"
+        className="flex-1 overflow-auto p-4 md:p-8 flex items-center justify-center relative"
         style={{
           ...gridBackgroundStyles,
           paddingBottom: `${bottomPanelHeight + 32}px`, // Add padding to account for bottom panel + some spacing
         }}
       >
-        {/* Canvas - centered horizontally and vertically */}
+        {/* Canvas - centered horizontally and vertically, adjusted for unequal panel sizes */}
         <div 
-          className={`
-            relative bg-background shadow-lg border border-border rounded-lg overflow-hidden mx-auto
-            ${currentDeviceSize.width}
-            ${currentDeviceSize.minWidth}
-            ${currentDeviceSize.height}
-            ${currentDeviceSize.minHeight}
-          `}
+          className="relative bg-background shadow-lg border border-border mx-auto"
           style={{
             ...canvasStyle,
             position: 'relative',
             top: `-${bottomPanelHeight / 2}px`, // Shift canvas up by half the panel height for perfect centering
-            transition: 'transform 0.2s ease, top 0.3s ease-in-out', // Smooth transition for both zoom and position changes
+            left: `${horizontalOffset}px`, // Adjust horizontal position to account for unequal panel sizes
+            transition: getCanvasTransition(), // Only animate top for thumbnail collapse
+            maxWidth: '100%', // Ensure it doesn't overflow horizontally
+            maxHeight: `calc(100vh - ${bottomPanelHeight + 64}px)`, // Ensure it doesn't overflow vertically
           }}
           onClick={handleCanvasClick}
           tabIndex={0}
           data-canvas="true"
         >
+          {/* Screen Name Label - positioned at left above the canvas */}
+          <div 
+            className="absolute z-30 left-2 -top-8"
+          >
+            {isEditingName ? (
+              <div className="h-6"> {/* Fixed height container */}
+                <input
+                  ref={nameInputRef}
+                  type="text"
+                  value={screenNameInput}
+                  onChange={(e) => setScreenNameInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (screenNameInput.trim()) {
+                        updateScreenName(screenNameInput);
+                      }
+                      setIsEditingName(false);
+                    } else if (e.key === 'Escape') {
+                      setScreenNameInput(quiz.screens[quiz.currentScreenIndex].name);
+                      setIsEditingName(false);
+                    }
+                  }}
+                  className="text-sm px-0 py-0 outline-none border-none w-[200px] bg-transparent"
+                  placeholder="Screen Name"
+                />
+              </div>
+            ) : (
+              <div 
+                className="text-sm font-medium cursor-text h-6" /* Removed hover:text-primary transition-colors */
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditingName(true);
+                }}
+              >
+                <span>{quiz.screens[quiz.currentScreenIndex].name}</span>
+              </div>
+            )}
+          </div>
+
           {/* Device Frame */}
-          <div className="absolute inset-0 flex flex-col h-full overflow-hidden" style={{ boxSizing: 'border-box' }}>
+          <div className="absolute inset-0 flex flex-col h-full" style={{ boxSizing: 'border-box' }}>
             {/* Screen Content */}
-            <div className="flex flex-col h-full overflow-hidden" style={{ boxSizing: 'border-box' }}>
+            <div className="flex flex-col h-full" style={{ boxSizing: 'border-box' }}>
               {/* Sections */}
-              <div className="flex flex-col h-full overflow-hidden" style={{ boxSizing: 'border-box' }}>
+              <div className="flex flex-col h-full" style={{ boxSizing: 'border-box' }}>
                 {hasHeader && renderSection('header')}
-                <div className="flex-1 overflow-hidden" style={{ boxSizing: 'border-box' }}>
+                <div className="flex-1" style={{ boxSizing: 'border-box' }}>
                   {renderSection('body')}
                 </div>
                 {hasFooter && renderSection('footer')}
@@ -429,14 +596,14 @@ export function MainContent() {
 
         {/* Floating Bottom Screen Navigation and Controls */}
         <div 
-          className="absolute bottom-4 z-20 transition-all duration-200" 
+          className="absolute bottom-4 z-20" 
           style={{ 
             left: panelLeftPosition, 
             width: panelWidth,
           }}
         >
           <div 
-            className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3 w-full transition-all duration-200"
+            className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3 w-full"
           >
             {/* Screen Thumbnails - Canva-style - conditionally rendered based on collapsed state */}
             <div 
@@ -531,10 +698,8 @@ export function MainContent() {
                 </Tooltip>
               </div>
               
-              {/* Middle space - now showing current page info when thumbnails are collapsed */}
-              <div className="text-sm text-muted-foreground">
-                {thumbnailsCollapsed && `Page ${quiz.currentScreenIndex + 1} / ${quiz.screens.length}`}
-              </div>
+              {/* Middle space - empty now */}
+              <div className="flex-1"></div>
               
               {/* Right side: undo/redo and zoom controls */}
               <div className="flex items-center gap-2">
@@ -609,22 +774,6 @@ export function MainContent() {
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p>Zoom In</p>
-                  </TooltipContent>
-                </Tooltip>
-                
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8" 
-                      onClick={() => handleZoom('reset')}
-                    >
-                      <Maximize className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>Reset Zoom (100%)</p>
                   </TooltipContent>
                 </Tooltip>
                 
