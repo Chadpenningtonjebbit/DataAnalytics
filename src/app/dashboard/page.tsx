@@ -6,7 +6,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { PageHeader } from '@/components/page-header';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useQuizStore } from '@/store/useQuizStore';
 import { useRouter } from 'next/navigation';
@@ -49,6 +49,7 @@ export default function Dashboard() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Create New Quiz</DialogTitle>
+                  <DialogDescription>Enter a name for your new quiz.</DialogDescription>
                 </DialogHeader>
                 <div className="py-4">
                   <Input

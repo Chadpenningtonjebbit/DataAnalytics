@@ -30,7 +30,8 @@ export default function EditorPage({ params }: EditorPageProps) {
         
         if (!success) {
           console.error(`Failed to load quiz with ID: ${quizId}`);
-          setError('Quiz not found or could not be loaded');
+          // Instead of showing an error, redirect to dashboard
+          router.replace('/dashboard');
           return;
         }
         
@@ -38,12 +39,13 @@ export default function EditorPage({ params }: EditorPageProps) {
         setIsLoading(false);
       } catch (error) {
         console.error('Error loading quiz:', error);
-        setError('An error occurred while loading the quiz');
+        // For any error, also redirect to dashboard
+        router.replace('/dashboard');
       }
     };
     
     initializeQuiz();
-  }, [quizId, loadQuiz]);
+  }, [quizId, loadQuiz, router]);
   
   // Show loading state
   if (isLoading) {
@@ -54,7 +56,7 @@ export default function EditorPage({ params }: EditorPageProps) {
     );
   }
   
-  // Show error state
+  // Show error state if for some reason we haven't redirected yet
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-screen">
