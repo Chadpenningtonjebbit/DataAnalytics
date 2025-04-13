@@ -335,6 +335,13 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           line-height: 1.5;
         }
         
+        /* !important rules for typography - ensure they always apply */
+        [style*="font-family"] { font-family: attr(style font-family) !important; }
+        [style*="font-size"] { font-size: attr(style font-size) !important; }
+        [style*="font-weight"] { font-weight: attr(style font-weight) !important; }
+        [style*="color"] { color: attr(style color) !important; }
+        [style*="text-align"] { text-align: attr(style text-align) !important; }
+        
         /* Custom CSS */
         ${css}
       </style>
@@ -355,6 +362,21 @@ export default function PreviewPage({ params }: PreviewPageProps) {
             link.addEventListener('click', function(e) {
               e.preventDefault(); // Prevent default navigation
               window.parent.postMessage({ type: 'buttonClick' }, '*');
+            });
+          });
+          
+          // Debug typography styles - log to console what styles are applied
+          console.log('Debugging typography styles:');
+          const textElements = document.querySelectorAll('p, button, a, h1, h2, h3, h4, h5, h6');
+          textElements.forEach(el => {
+            const computedStyle = window.getComputedStyle(el);
+            console.log(el.tagName, el.id, {
+              'font-family': computedStyle.fontFamily,
+              'font-size': computedStyle.fontSize,
+              'font-weight': computedStyle.fontWeight,
+              'color': computedStyle.color,
+              'text-align': computedStyle.textAlign,
+              'inline-style': el.getAttribute('style')
             });
           });
         });

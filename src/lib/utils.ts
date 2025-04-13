@@ -10,10 +10,10 @@ export function cn(...inputs: ClassValue[]) {
 // for better thumbnail rendering
 const criticalStyleProperties = {
   default: ['width', 'height'],
-  button: ['width', 'height', 'backgroundColor', 'padding', 'borderRadius', 'color', 'border'],
+  button: ['width', 'height', 'backgroundColor', 'padding', 'borderRadius', 'color', 'border', 'fontSize', 'fontFamily', 'fontWeight', 'textAlign'],
   text: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textAlign'],
   image: ['width', 'height', 'objectFit', 'borderRadius', 'border'],
-  link: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textDecoration'],
+  link: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textDecoration', 'textAlign'],
   group: ['width', 'height', 'padding', 'backgroundColor', 'gap', 'border', 'borderRadius', 'display', 'flexDirection']
 };
 
@@ -26,6 +26,15 @@ export function generateElementHtml(element: QuizElement): string {
     ...criticalStyleProperties.default,
     ...(criticalStyleProperties[elementType] || [])
   ];
+  
+  // Always include typography properties for text-based elements
+  if (['text', 'button', 'link'].includes(element.type)) {
+    if (!propertiesToInclude.includes('fontSize')) propertiesToInclude.push('fontSize');
+    if (!propertiesToInclude.includes('fontFamily')) propertiesToInclude.push('fontFamily');
+    if (!propertiesToInclude.includes('fontWeight')) propertiesToInclude.push('fontWeight');
+    if (!propertiesToInclude.includes('color')) propertiesToInclude.push('color');
+    if (!propertiesToInclude.includes('textAlign')) propertiesToInclude.push('textAlign');
+  }
   
   // Extract critical visual properties for inline style
   const inlineStyle: string[] = [];
@@ -59,6 +68,25 @@ export function generateElementHtml(element: QuizElement): string {
       inlineStyle.push(`${cssProp}: ${value}`);
     }
   });
+  
+  // Add defaults for typography properties if not specified
+  if (['text', 'button', 'link'].includes(element.type)) {
+    if (!element.styles?.fontSize && !inlineStyle.some(s => s.startsWith('font-size:'))) {
+      inlineStyle.push('font-size: 16px');
+    }
+    if (!element.styles?.fontFamily && !inlineStyle.some(s => s.startsWith('font-family:'))) {
+      inlineStyle.push('font-family: Arial, sans-serif');
+    }
+    if (!element.styles?.fontWeight && !inlineStyle.some(s => s.startsWith('font-weight:'))) {
+      inlineStyle.push('font-weight: 400');
+    }
+    if (!element.styles?.color && !inlineStyle.some(s => s.startsWith('color:'))) {
+      inlineStyle.push('color: #000000');
+    }
+    if (!element.styles?.textAlign && !inlineStyle.some(s => s.startsWith('text-align:'))) {
+      inlineStyle.push('text-align: center');
+    }
+  }
   
   // Add critical inline styles for better rendering
   const styleAttr = inlineStyle.length > 0 ? ` style="${inlineStyle.join('; ')}"` : '';
@@ -182,7 +210,12 @@ export function generateElementCss(element: QuizElement): string {
       // Convert camelCase to kebab-case
       const kebabProperty = property.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase();
       
-      css += `  ${kebabProperty}: ${processedValue};\n`;
+      // Add !important to typography properties to ensure they override defaults
+      if (['font-family', 'font-size', 'font-weight', 'color', 'text-align'].includes(kebabProperty)) {
+        css += `  ${kebabProperty}: ${processedValue} !important;\n`;
+      } else {
+        css += `  ${kebabProperty}: ${processedValue};\n`;
+      }
     }
   }
   
