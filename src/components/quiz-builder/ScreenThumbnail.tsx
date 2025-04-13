@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
 import { QuizScreen } from '@/types';
 import { ThumbnailRenderer } from './ThumbnailRenderer';
 
@@ -14,7 +14,7 @@ interface ScreenThumbnailProps {
   id: string;
 }
 
-export function ScreenThumbnail({ 
+export const ScreenThumbnail = memo(function ScreenThumbnail({ 
   screen, 
   index, 
   isActive, 
@@ -28,22 +28,6 @@ export function ScreenThumbnail({
   
   // State for the rendered thumbnail
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
-  
-  // For debugging - log screen structure
-  useEffect(() => {
-    console.log(`Screen ${index + 1} structure:`, {
-      id: screen.id,
-      sections: Object.entries(screen.sections).map(([sectionId, section]) => ({
-        sectionId,
-        elements: section.elements.map(el => ({
-          id: el.id,
-          type: el.type,
-          hasStyles: !!Object.keys(el.styles || {}).length,
-          styles: el.styles
-        }))
-      }))
-    });
-  }, [screen, index]);
   
   // Callback to handle when the thumbnail is rendered
   const handleThumbnailRender = useCallback((dataUrl: string) => {
@@ -88,4 +72,4 @@ export function ScreenThumbnail({
       </div>
     </div>
   );
-} 
+}); 

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Quiz, QuizElement, QuizScreen, ViewMode, ElementType, SectionType, QuizSection, SectionLayout, FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent } from '@/types';
+import { debounce } from 'lodash';
 
 // Helper function to safely clone objects avoiding circular references
 const safeClone = <T>(obj: T): T => {
@@ -209,13 +210,15 @@ const saveQuizToStorage = (quiz: Quiz) => {
     const quizData = safeClone(quiz);
     quizData.lastEdited = new Date().toISOString();
     localStorage.setItem(getQuizStorageKey(quizId), JSON.stringify(quizData));
-    console.log(`Saved quiz to localStorage: ${quizId}`);
     return true;
   } catch (error) {
     console.error('Failed to save quiz to localStorage:', error);
     return false;
   }
 };
+
+// Debounced version of saveQuizToStorage
+const debouncedSaveQuizToStorage = debounce(saveQuizToStorage, 500);
 
 // Load a quiz from storage by ID
 const loadQuizFromStorage = (quizId: string): Quiz | null => {
@@ -264,6 +267,9 @@ const saveQuizListToStorage = (quizList: QuizListItem[]) => {
     return false;
   }
 };
+
+// Debounced version of saveQuizListToStorage
+const debouncedSaveQuizListToStorage = debounce(saveQuizListToStorage, 500);
 
 // Load quiz list from storage
 const loadQuizListFromStorage = (): QuizListItem[] => {
@@ -317,14 +323,14 @@ export const useQuizStore = create<QuizState>()(
         // Update state with new quiz
         set(state => {
           // Save the current quiz before switching
-          saveQuizToStorage(state.quiz);
+          debouncedSaveQuizToStorage(state.quiz);
           
           // Update quiz list
           const updatedQuizList = [...state.quizList, newQuizListItem];
-          saveQuizListToStorage(updatedQuizList);
+          debouncedSaveQuizListToStorage(updatedQuizList);
           
           // Save new quiz
-          saveQuizToStorage(newQuiz);
+          debouncedSaveQuizToStorage(newQuiz);
     
     return {
             quiz: newQuiz,
@@ -346,7 +352,7 @@ export const useQuizStore = create<QuizState>()(
         }
         
         // Save current quiz before switching
-        saveQuizToStorage(get().quiz);
+        debouncedSaveQuizToStorage(get().quiz);
         
         // Update the state with the loaded quiz
         set({
@@ -377,7 +383,7 @@ export const useQuizStore = create<QuizState>()(
         // Remove from storage
         try {
           localStorage.removeItem(getQuizStorageKey(id));
-          saveQuizListToStorage(updatedQuizList);
+          debouncedSaveQuizListToStorage(updatedQuizList);
           set({ quizList: updatedQuizList });
           console.log(`Deleted quiz: ${id}`);
         } catch (error) {
@@ -395,7 +401,7 @@ export const useQuizStore = create<QuizState>()(
         };
         
         // Save to storage
-        saveQuizToStorage(updatedQuiz);
+        debouncedSaveQuizToStorage(updatedQuiz);
         
         // Update quiz list
         const updatedQuizList = quizList.map(item => 
@@ -403,7 +409,7 @@ export const useQuizStore = create<QuizState>()(
             ? { ...item, name: updatedQuiz.name, lastEdited: updatedQuiz.lastEdited || new Date().toISOString() } 
             : item
         );
-        saveQuizListToStorage(updatedQuizList);
+        debouncedSaveQuizListToStorage(updatedQuizList);
         
         // Update state
         set({
@@ -433,7 +439,7 @@ export const useQuizStore = create<QuizState>()(
         };
         
         // Save the quiz to storage
-        saveQuizToStorage(finalQuiz);
+        debouncedSaveQuizToStorage(finalQuiz);
         
         // Update quiz list item
         const updatedQuizList = state.quizList.map(item => 
@@ -441,7 +447,7 @@ export const useQuizStore = create<QuizState>()(
             ? { ...item, name: finalQuiz.name, lastEdited: finalQuiz.lastEdited || new Date().toISOString() } 
             : item
         );
-        saveQuizListToStorage(updatedQuizList);
+        debouncedSaveQuizListToStorage(updatedQuizList);
         
         set({
           quiz: finalQuiz,
@@ -460,7 +466,7 @@ export const useQuizStore = create<QuizState>()(
         };
         
         // Save to storage
-        saveQuizToStorage(updatedQuiz);
+        debouncedSaveQuizToStorage(updatedQuiz);
         
         // Update quiz list
         const { quizList } = get();
@@ -469,7 +475,7 @@ export const useQuizStore = create<QuizState>()(
             ? { ...item, name: updatedQuiz.name, lastEdited: updatedQuiz.lastEdited || '' } 
             : item
         );
-        saveQuizListToStorage(updatedQuizList);
+        debouncedSaveQuizListToStorage(updatedQuizList);
         
         set({
           quiz: updatedQuiz,
@@ -1329,7 +1335,7 @@ export const useQuizStore = create<QuizState>()(
       };
     
           // Save to storage
-          saveQuizToStorage(updatedQuiz);
+          debouncedSaveQuizToStorage(updatedQuiz);
     
           // Update state
     set({ 
@@ -1348,12 +1354,12 @@ export const useQuizStore = create<QuizState>()(
               name: newName.trim(),
               lastEdited: new Date().toISOString()
             };
-            saveQuizToStorage(updatedQuiz);
+            debouncedSaveQuizToStorage(updatedQuiz);
           }
         }
         
         // Save the updated list to storage
-        saveQuizListToStorage(updatedQuizList);
+        debouncedSaveQuizListToStorage(updatedQuizList);
         console.log(`Renamed quiz ${id} to "${newName}"`);
           return true;
       },
@@ -1395,8 +1401,8 @@ export const useQuizStore = create<QuizState>()(
         set({ quizList: updatedQuizList });
         
         // Save to storage
-        saveQuizToStorage(duplicatedQuiz);
-        saveQuizListToStorage(updatedQuizList);
+        debouncedSaveQuizToStorage(duplicatedQuiz);
+        debouncedSaveQuizListToStorage(updatedQuizList);
         
         console.log(`Duplicated quiz ${id} as ${newId}`);
         return newId;
