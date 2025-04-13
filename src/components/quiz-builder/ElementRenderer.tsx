@@ -531,6 +531,28 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
             {element.content}
           </button>
         );
+      
+      case 'image':
+        return (
+          <img 
+            src={element.attributes?.src || ''} 
+            alt={element.attributes?.alt || ''}
+            style={{ 
+              maxWidth: '100%', 
+              height: 'auto', 
+              display: 'block',
+              margin: '0 auto',
+              borderRadius: 'inherit'
+            }}
+          />
+        );
+        
+      case 'link':
+        return (
+          <a href="#" style={{ borderRadius: 'inherit' }}>
+            {element.content || 'Link'}
+          </a>
+        );
         
       // Add other element types as needed
       default:

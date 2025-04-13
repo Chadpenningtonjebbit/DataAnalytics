@@ -13,7 +13,8 @@ const criticalStyleProperties = {
   button: ['width', 'height', 'backgroundColor', 'padding', 'borderRadius', 'color', 'border'],
   text: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textAlign'],
   image: ['width', 'height', 'objectFit', 'borderRadius', 'border'],
-  link: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textDecoration']
+  link: ['width', 'height', 'color', 'fontSize', 'fontWeight', 'fontFamily', 'textDecoration'],
+  group: ['width', 'height', 'padding', 'backgroundColor', 'gap', 'border', 'borderRadius', 'display', 'flexDirection']
 };
 
 export function generateElementHtml(element: QuizElement): string {
@@ -62,31 +63,95 @@ export function generateElementHtml(element: QuizElement): string {
   // Add critical inline styles for better rendering
   const styleAttr = inlineStyle.length > 0 ? ` style="${inlineStyle.join('; ')}"` : '';
   
-  switch (element.type) {
-    case 'text':
-      html = `<p id="${element.id}"${styleAttr}>${element.content}</p>`
-      break
-    case 'button':
-      html = `<button id="${element.id}"${styleAttr}>${element.content}</button>`
-      break
-    case 'image':
-      html = `<img id="${element.id}" src="${element.attributes.src || ''}" alt="${element.attributes.alt || ''}"${styleAttr} />`
-      break
-    case 'link':
-      html = `<a id="${element.id}" href="#"${styleAttr}>${element.content || 'Link'}</a>`
-      break
-    default:
-      html = `<div id="${element.id}"${styleAttr}>${element.content || ''}</div>`
+  // Handle group elements specially
+  if (element.type === 'group' && element.children && element.children.length > 0) {
+    // Create a div with group styles
+    let layoutAttributes = '';
+    
+    // Add layout attributes if present
+    if (element.layout) {
+      const layout = element.layout;
+      layoutAttributes = ` 
+        data-direction="${layout.direction || 'column'}"
+        data-wrap="${layout.wrap || 'nowrap'}"
+        data-justify="${layout.justifyContent || 'flex-start'}"
+        data-align-items="${layout.alignItems || 'flex-start'}"
+        data-align-content="${layout.alignContent || 'flex-start'}"
+        data-gap="${layout.gap || '0px'}"`;
+        
+      // Make sure gap is added to inline styles if present
+      if (layout.gap && !element.styles.gap) {
+        inlineStyle.push(`gap: ${layout.gap}`);
+      }
+    }
+    
+    // Ensure display: flex is added
+    if (!inlineStyle.some(style => style.startsWith('display:'))) {
+      inlineStyle.push('display: flex');
+    }
+    
+    // Ensure flex-direction is added
+    if (!inlineStyle.some(style => style.startsWith('flex-direction:'))) {
+      const direction = element.layout?.direction || 'column';
+      inlineStyle.push(`flex-direction: ${direction}`);
+    }
+    
+    // Update style attribute with new styles
+    const updatedStyleAttr = inlineStyle.length > 0 ? ` style="${inlineStyle.join('; ')}"` : '';
+    
+    html = `<div id="${element.id}" class="element-group"${layoutAttributes}${updatedStyleAttr}>\n`;
+    
+    // Process all children elements recursively
+    element.children.forEach(childElement => {
+      // Add child element with proper indentation
+      html += `  ${generateElementHtml({...childElement, sectionId: element.sectionId}).replace(/\n/g, '\n  ')}\n`;
+    });
+    
+    html += '</div>';
+  } else {
+    // Handle regular elements as before
+    switch (element.type) {
+      case 'text':
+        html = `<p id="${element.id}"${styleAttr}>${element.content}</p>`
+        break
+      case 'button':
+        html = `<button id="${element.id}"${styleAttr}>${element.content}</button>`
+        break
+      case 'image':
+        html = `<img id="${element.id}" src="${element.attributes.src || ''}" alt="${element.attributes.alt || ''}"${styleAttr} />`
+        break
+      case 'link':
+        html = `<a id="${element.id}" href="#"${styleAttr}>${element.content || 'Link'}</a>`
+        break
+      case 'input':
+        html = `<input id="${element.id}" type="${element.attributes.type || 'text'}" placeholder="${element.attributes.placeholder || ''}"${styleAttr} />`
+        break
+      case 'checkbox':
+        html = `<div id="${element.id}"${styleAttr}><input type="checkbox" value="${element.attributes.value || ''}" ${element.attributes.checked ? 'checked' : ''} /> ${element.content}</div>`
+        break
+      case 'radio':
+        html = `<div id="${element.id}"${styleAttr}><input type="radio" name="${element.attributes.name || ''}" value="${element.attributes.value || ''}" /> ${element.content}</div>`
+        break
+      case 'select':
+        html = `<select id="${element.id}"${styleAttr}>${element.content}</select>`
+        break
+      case 'textarea':
+        html = `<textarea id="${element.id}" placeholder="${element.attributes.placeholder || ''}"${styleAttr}>${element.content || ''}</textarea>`
+        break
+      default:
+        html = `<div id="${element.id}"${styleAttr}>${element.content || ''}</div>`
+    }
   }
   
   return html
 }
 
 export function generateElementCss(element: QuizElement): string {
+  let css = '';
   const styles = element.styles;
   
   // Use a more specific selector including the section ID for better specificity
-  let css = `#section-${element.sectionId} #${element.id} {\n`;
+  css += `#section-${element.sectionId} #${element.id} {\n`;
   
   // Process all styles without any filtering
   for (const [property, value] of Object.entries(styles)) {
@@ -123,6 +188,15 @@ export function generateElementCss(element: QuizElement): string {
   
   css += '}\n';
   
+  // Handle child elements of group
+  if (element.type === 'group' && element.children && element.children.length > 0) {
+    // Add CSS for each child element, maintaining proper selectors
+    element.children.forEach(childElement => {
+      // Pass the same sectionId to ensure proper CSS selector hierarchy
+      css += generateElementCss({...childElement, sectionId: element.sectionId});
+    });
+  }
+  
   return css;
 }
 
@@ -158,6 +232,34 @@ export function generateScreenHtml(screen: QuizScreen): string {
             inlineStyles.push(`${cssProp}: ${section.styles[prop]}`);
           }
         });
+      }
+      
+      // Ensure layout properties are added to inline styles for better rendering
+      if (section.layout) {
+        // Always add display: flex
+        if (!inlineStyles.some(style => style.startsWith('display:'))) {
+          inlineStyles.push('display: flex');
+        }
+        
+        // Always add flex-direction
+        if (!inlineStyles.some(style => style.startsWith('flex-direction:'))) {
+          inlineStyles.push(`flex-direction: ${section.layout.direction || 'column'}`);
+        }
+        
+        // Always add justify-content
+        if (!inlineStyles.some(style => style.startsWith('justify-content:'))) {
+          inlineStyles.push(`justify-content: ${section.layout.justifyContent || 'flex-start'}`);
+        }
+        
+        // Always add align-items
+        if (!inlineStyles.some(style => style.startsWith('align-items:'))) {
+          inlineStyles.push(`align-items: ${section.layout.alignItems || 'flex-start'}`);
+        }
+        
+        // Add gap if specified
+        if (section.layout.gap && !inlineStyles.some(style => style.startsWith('gap:'))) {
+          inlineStyles.push(`gap: ${section.layout.gap}`);
+        }
       }
       
       // Add style attribute if there are inline styles

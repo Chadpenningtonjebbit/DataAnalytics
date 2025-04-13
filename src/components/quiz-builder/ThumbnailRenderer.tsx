@@ -59,6 +59,11 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               display: flex;
             }
             
+            /* Global text alignment for all elements */
+            p, h1, h2, h3, h4, h5, h6, button, a, label, span, div, input, select, textarea {
+              text-align: center;
+            }
+            
             /* Default section styling */
             .quiz-section-header {
               background-color: #f8fafc;
@@ -100,6 +105,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               font-size: 16px;
               line-height: 1.5;
               color: #000000;
+              text-align: center;
             }
             
             /* Images */
@@ -107,6 +113,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               max-width: 100%;
               height: auto;
               display: block;
+              margin: 0 auto; /* Center images */
             }
             
             /* Links */
@@ -116,6 +123,93 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               font-family: Arial, sans-serif;
               font-size: 16px;
               cursor: pointer;
+              text-align: center;
+              display: inline-block;
+              width: 100%;
+            }
+            
+            /* Groups */
+            .element-group {
+              display: flex;
+              flex-direction: column;
+              gap: 8px;
+              padding: 8px;
+              box-sizing: border-box;
+              width: 100%; /* Ensure groups take full width by default */
+              text-align: center;
+            }
+            
+            /* Better gap support - use gap attribute from data attributes if present */
+            [data-gap] {
+              gap: attr(data-gap);
+            }
+            
+            /* Make sure gap works in all browsers */
+            [data-direction="row"] > * {
+              margin-right: 0;
+              margin-bottom: 0;
+            }
+            
+            [data-direction="column"] > * {
+              margin-bottom: 0;
+              margin-right: 0;
+            }
+            
+            /* Ensure all flex children behave consistently */
+            .quiz-section > *, .element-group > * {
+              box-sizing: border-box;
+              flex-shrink: 0;
+            }
+            
+            /* Input fields */
+            input[type="text"], 
+            input[type="email"],
+            input[type="password"],
+            input[type="number"] {
+              padding: 8px 12px;
+              border-radius: 4px;
+              border: 1px solid #ccc;
+              font-family: Arial, sans-serif;
+              font-size: 16px;
+              box-sizing: border-box;
+              text-align: center;
+            }
+            
+            /* Checkbox and radio styling */
+            input[type="checkbox"],
+            input[type="radio"] {
+              margin-right: 8px;
+              vertical-align: middle;
+            }
+            
+            /* Checkbox and radio container divs */
+            div:has(> input[type="checkbox"]),
+            div:has(> input[type="radio"]) {
+              text-align: center;
+            }
+            
+            /* Textarea styling */
+            textarea {
+              padding: 8px 12px;
+              border-radius: 4px;
+              border: 1px solid #ccc;
+              font-family: Arial, sans-serif;
+              font-size: 16px;
+              min-height: 80px;
+              box-sizing: border-box;
+              text-align: center;
+            }
+            
+            /* Select styling */
+            select {
+              padding: 8px 12px;
+              border-radius: 4px;
+              border: 1px solid #ccc;
+              font-family: Arial, sans-serif;
+              font-size: 16px;
+              background-color: white;
+              box-sizing: border-box;
+              text-align: center;
             }
             
             /* Apply layout attributes */
@@ -203,11 +297,27 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
   
   // Check if screen content changed and force re-render
   useEffect(() => {
-    // Create a simple hash of the screen contents to detect changes
+    // For more complex screens with nested groups, create a deeper hash
+    // that includes all nested children
+    const getElementsHash = (elements: any[]): string => {
+      return JSON.stringify(elements.map(el => {
+        if (el.isGroup && el.children) {
+          return {
+            id: el.id,
+            type: el.type,
+            styles: el.styles,
+            children: getElementsHash(el.children)
+          };
+        }
+        return { id: el.id, type: el.type, styles: el.styles };
+      }));
+    };
+    
+    // Create a hash of the screen contents to detect changes
     const screenHash = JSON.stringify({
-      header: screen.sections.header.elements,
-      body: screen.sections.body.elements,
-      footer: screen.sections.footer.elements
+      header: getElementsHash(screen.sections.header.elements),
+      body: getElementsHash(screen.sections.body.elements),
+      footer: getElementsHash(screen.sections.footer.elements)
     });
     
     // Reset hasRendered when screen content changes

@@ -684,7 +684,8 @@ export const useQuizStore = create<QuizState>()(
           fontSize: '16px',
           fontWeight: '400',
           fontFamily: 'Arial, sans-serif',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          textAlign: 'center'
         };
         defaultContent = 'Button';
         break;
@@ -694,14 +695,15 @@ export const useQuizStore = create<QuizState>()(
           color: '#000000',
           fontWeight: '400',
           fontFamily: 'Arial, sans-serif',
-          padding: '0px'
+          padding: '0px',
+          textAlign: 'center'
         };
         defaultContent = 'New Text';
         break;
       case 'image':
         defaultStyles = {
-          width: '100px',
-          height: '100px',
+          width: 'auto',
+          height: 'auto',
           objectFit: 'cover',
           border: '1px solid #ddd'
         };
@@ -713,7 +715,8 @@ export const useQuizStore = create<QuizState>()(
           textDecoration: 'underline',
           cursor: 'pointer',
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center'
         };
         defaultContent = 'Link Text';
         defaultAttributes = { href: '#', target: '_blank' };
@@ -725,20 +728,23 @@ export const useQuizStore = create<QuizState>()(
           border: '1px solid #ccc',
           width: '100%',
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center'
         };
         defaultAttributes = { placeholder: 'Enter text...', type: 'text' };
         break;
       case 'checkbox':
         defaultStyles = {
-          margin: '8px 0'
+          margin: '8px 0',
+          textAlign: 'center'
         };
         defaultContent = 'Checkbox Label';
         defaultAttributes = { value: 'option1', checked: false };
         break;
       case 'radio':
         defaultStyles = {
-          margin: '8px 0'
+          margin: '8px 0',
+          textAlign: 'center'
         };
         defaultContent = 'Radio Option';
         defaultAttributes = { name: 'radioGroup', value: 'option1' };
@@ -750,7 +756,8 @@ export const useQuizStore = create<QuizState>()(
           border: '1px solid #ccc',
           width: '100%',
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'Arial, sans-serif',
+          textAlign: 'center'
         };
         defaultContent = '<option value="1">Option 1</option><option value="2">Option 2</option>';
         break;
@@ -763,7 +770,8 @@ export const useQuizStore = create<QuizState>()(
           height: '100px',
           fontSize: '16px',
           fontFamily: 'Arial, sans-serif',
-          resize: 'vertical'
+          resize: 'vertical',
+          textAlign: 'center'
         };
         defaultAttributes = { placeholder: 'Enter multiple lines of text...' };
         break;
@@ -774,7 +782,8 @@ export const useQuizStore = create<QuizState>()(
           gap: '8px',
           padding: '16px',
           border: '0px solid transparent',
-          borderRadius: '4px'
+          borderRadius: '4px',
+          textAlign: 'center'
         };
         defaultAttributes = { 
           isGroup: true,

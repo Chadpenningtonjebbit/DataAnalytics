@@ -62,6 +62,12 @@ export function QuizManager() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
   const menuRef = React.useRef<HTMLDivElement>(null);
   
+  // Add state for menu position
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  
+  // Add state for search term
+  const [searchTerm, setSearchTerm] = useState('');
+  
   // Handle document clicks to close menu when clicking outside
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -78,9 +84,22 @@ export function QuizManager() {
     }
   }, [activeMenu]);
   
-  // Toggle menu function
+  // Toggle menu function with position calculation
   const toggleMenu = (e: React.MouseEvent, quizId: string) => {
     e.stopPropagation();
+    
+    // If opening the menu, calculate position
+    if (activeMenu !== quizId) {
+      const button = e.currentTarget as HTMLElement;
+      const rect = button.getBoundingClientRect();
+      
+      // Position the menu near the button
+      setMenuPosition({
+        top: rect.bottom + 5, // 5px below the button
+        left: rect.right - 160 // Aligned with button's right edge, adjusted to center menu
+      });
+    }
+    
     setActiveMenu(activeMenu === quizId ? null : quizId);
   };
 
@@ -108,6 +127,18 @@ export function QuizManager() {
       }
     });
   }, [quizList, sortOption]);
+
+  // Filter quizzes based on search term
+  const filteredQuizList = useMemo(() => {
+    if (!searchTerm.trim()) {
+      return sortedQuizList;
+    }
+    
+    const lowercasedSearch = searchTerm.toLowerCase();
+    return sortedQuizList.filter(quiz => 
+      quiz.name.toLowerCase().includes(lowercasedSearch)
+    );
+  }, [sortedQuizList, searchTerm]);
 
   if (!isClient) {
     return null;
@@ -220,7 +251,21 @@ export function QuizManager() {
   return (
     <div className="w-full space-y-6">
       <div className="mb-4 flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">{quizList.length} quizzes available</div>
+        <div className="relative w-[300px]">
+          <Input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 bg-background"
+          />
+          <div className="absolute left-2.5 top-2.5 text-muted-foreground">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-search">
+              <circle cx="11" cy="11" r="8"></circle>
+              <path d="m21 21-4.3-4.3"></path>
+            </svg>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
           <Select
             value={sortOption}
@@ -261,12 +306,7 @@ export function QuizManager() {
       </div>
 
       {quizList.length === 0 ? (
-        <div className="text-center py-12 border rounded-lg border-dashed">
-          <div className="flex justify-center mb-4">
-            <div className="empty-state-icon relative w-24 h-24 flex items-center justify-center rounded-full bg-muted">
-              <FileEdit className="h-10 w-10 text-muted-foreground" />
-            </div>
-          </div>
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm text-center py-16">
           <h3 className="text-lg font-medium mb-2">No quizzes found</h3>
           <p className="text-muted-foreground mb-4 max-w-md mx-auto">
             Create your first quiz to get started. You can build interactive quizzes with various question types.
@@ -276,9 +316,26 @@ export function QuizManager() {
             Create Quiz
           </Button>
         </div>
+      ) : filteredQuizList.length === 0 ? (
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm text-center py-16">
+          <h3 className="text-lg font-medium mb-2">No matches found</h3>
+          <p className="text-muted-foreground mb-4 max-w-md mx-auto">
+            No quizzes match your search criteria. Try a different search term.
+          </p>
+          <Button variant="outline" onClick={() => setSearchTerm('')}>
+            Clear search
+          </Button>
+        </div>
       ) : (
-        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden">
-          <div className="relative w-full overflow-auto">
+        <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-visible">
+          <div className="relative w-full overflow-visible">
+            {searchTerm && (
+              <div className="p-2 border-b border-border bg-muted/30 flex justify-between items-center">
+                <span className="text-xs text-muted-foreground px-3">
+                  Search results: {filteredQuizList.length} matching {filteredQuizList.length === 1 ? "quiz" : "quizzes"}
+                </span>
+              </div>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
@@ -288,7 +345,7 @@ export function QuizManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedQuizList.map((quiz) => {
+                {filteredQuizList.map((quiz) => {
                   const handleRowClick = () => {
                     loadQuiz(quiz.id);
                     router.push(`/editor/${quiz.id}`);
@@ -308,7 +365,7 @@ export function QuizManager() {
                       <TableCell className="hover:bg-muted/10">
                         {formatDate(quiz.lastEdited)}
                       </TableCell>
-                      <TableCell className="text-right relative">
+                      <TableCell className="text-right relative overflow-visible">
                         <div ref={isMenuOpen ? menuRef : null}>
                           <Button 
                             variant="ghost"
@@ -319,7 +376,13 @@ export function QuizManager() {
                           </Button>
                           
                           {isMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 rounded-md shadow-lg bg-popover border border-border z-50">
+                            <div 
+                              className="fixed w-56 rounded-md shadow-lg bg-popover border border-border z-[100]" 
+                              style={{
+                                top: `${menuPosition.top}px`,
+                                left: `${menuPosition.left}px`,
+                              }}
+                            >
                               <div className="py-1" role="menu" aria-orientation="vertical" aria-labelledby="options-menu">
                                 <button
                                   className="w-full flex items-center px-4 py-2 text-sm hover:bg-accent hover:text-accent-foreground"

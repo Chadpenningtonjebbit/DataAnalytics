@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useParams } from 'next/navigation';
 import { Button } from "@/components/ui/button";
 import { 
   DropdownMenu,
@@ -46,6 +46,10 @@ export function AppHeader({
 }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
+  const params = useParams();
+  
+  // Extract quizId from URL if in editor page
+  const quizId = pageType === 'editor' && params?.quizId ? params.quizId : null;
   
   return (
     <header className="border-b border-border h-12 flex items-center justify-between px-4 bg-background/95 backdrop-blur-sm z-40 sticky top-0 shadow-sm">
@@ -100,7 +104,12 @@ export function AppHeader({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-8 w-8 p-0" 
+                    onClick={() => quizId && window.open(`/preview/${quizId}`, '_blank')}
+                  >
                     <EyeIcon className="h-4 w-4" />
                     <span className="sr-only">Preview</span>
                   </Button>
