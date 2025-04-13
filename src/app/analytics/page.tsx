@@ -13,8 +13,8 @@ export default function Analytics() {
       <AppHeader pageType="dashboard" />
       
       <main className="flex flex-1 flex-col bg-muted">
-        <div className="max-w-7xl mx-auto w-full px-4">
-          <div className="flex flex-col gap-4 py-4 md:gap-6 md:py-6">
+        <div className="max-w-7xl mx-auto w-full p-12">
+          <div className="flex flex-col gap-4 md:gap-6">
             <PageHeader
               title="Analytics"
               description="View performance metrics for all your quizzes"

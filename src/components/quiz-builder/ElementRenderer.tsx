@@ -539,10 +539,12 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
             alt={element.attributes?.alt || ''}
             style={{ 
               maxWidth: '100%', 
-              height: 'auto', 
               display: 'block',
               margin: '0 auto',
-              borderRadius: 'inherit'
+              borderRadius: 'inherit',
+              objectFit: (element.styles?.objectFit as 'fill' | 'contain' | 'cover') || 'cover',
+              width: '100%',
+              height: '100%'
             }}
           />
         );

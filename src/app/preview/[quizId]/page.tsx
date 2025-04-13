@@ -356,12 +356,40 @@ export default function PreviewPage({ params }: PreviewPageProps) {
             });
           });
           
-          // Also handle clicks on links
+          // Handle clicks on links
           const links = document.querySelectorAll('a');
           links.forEach(link => {
             link.addEventListener('click', function(e) {
-              e.preventDefault(); // Prevent default navigation
+              // First, notify parent for navigation between screens
               window.parent.postMessage({ type: 'buttonClick' }, '*');
+              
+              // Check if this is a link element (rather than a navigation element)
+              if (link.hasAttribute('data-link-element')) {
+                // Get the target and href attributes
+                const target = link.getAttribute('target');
+                const href = link.getAttribute('href');
+                
+                // If it's a link element with a real URL, allow the navigation to happen
+                // but in a deferred way to allow screen transition first
+                if (href && href !== '#') {
+                  e.preventDefault(); // Prevent immediate navigation
+                  
+                  // Wait a brief moment to allow screen transition
+                  setTimeout(() => {
+                    if (target === '_blank') {
+                      // Open in new window
+                      window.open(href, '_blank');
+                    } else if (target === '_self') {
+                      // Open in current window (this will break out of the iframe)
+                      window.parent.location.href = href;
+                    }
+                  }, 300); // Short delay for screen transition
+                } else {
+                  e.preventDefault(); // Prevent navigation for # links
+                }
+              } else {
+                e.preventDefault(); // Prevent navigation for normal quiz navigation links
+              }
             });
           });
           
@@ -403,7 +431,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
         srcDoc={fullHtml}
         className="w-full h-screen border-0"
         title="Quiz Preview"
-        sandbox="allow-scripts allow-same-origin allow-popups"
+        sandbox="allow-scripts allow-same-origin allow-popups allow-top-navigation allow-forms"
         referrerPolicy="no-referrer"
       />
       {!isLoading && !error && screenIndicator}

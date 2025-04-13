@@ -422,13 +422,35 @@ export function PropertiesPanel() {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="image-title">Title</Label>
-            <Input 
-              id="image-title" 
-              value={commonProperties.content || ''} 
-              onChange={handleTextChange} 
-              placeholder="Image title (optional)"
-            />
+            <Label htmlFor="image-fit">Image Fit</Label>
+            <Select
+              value={commonProperties.styles?.objectFit || 'cover'}
+              onValueChange={(value) => handleStyleChange('objectFit', value)}
+            >
+              <SelectTrigger id="image-fit" className="w-full">
+                <SelectValue placeholder="Select fit mode" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="cover">
+                  <div className="flex items-center gap-2">
+                    <BoxSelect className="h-4 w-4" />
+                    <span>Cover (fill & crop)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="contain">
+                  <div className="flex items-center gap-2">
+                    <Minimize className="h-4 w-4" />
+                    <span>Contain (fit entire image)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="fill">
+                  <div className="flex items-center gap-2">
+                    <Maximize className="h-4 w-4" />
+                    <span>Fill (stretch to fit)</span>
+                  </div>
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </PropertyGroup>
       )}

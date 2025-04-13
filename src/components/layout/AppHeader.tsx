@@ -19,9 +19,7 @@ import {
 import { 
   MoonIcon, 
   SunIcon, 
-  SaveIcon, 
   EyeIcon, 
-  RocketIcon,
   ArrowLeft,
   HomeIcon,
   LayoutDashboard,
@@ -90,20 +88,6 @@ export function AppHeader({
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <SaveIcon className="h-4 w-4" />
-                    <span className="sr-only">Save</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Save your project</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -116,20 +100,6 @@ export function AppHeader({
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
                   <p>Preview your project</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-            
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="default" size="sm" className="h-8">
-                    <RocketIcon className="h-4 w-4 mr-1" />
-                    Publish
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  <p>Publish your project</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>

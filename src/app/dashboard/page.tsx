@@ -33,7 +33,7 @@ export default function Dashboard() {
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader pageType="dashboard" />
       
-      <main className="flex-1 py-6 px-4 bg-muted">
+      <main className="flex-1 p-12 bg-muted">
         <div className="max-w-6xl mx-auto">
           <PageHeader
             title="Dashboard"

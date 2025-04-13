@@ -149,7 +149,9 @@ export function generateElementHtml(element: QuizElement): string {
         html = `<img id="${element.id}" src="${element.attributes.src || ''}" alt="${element.attributes.alt || ''}"${styleAttr} />`
         break
       case 'link':
-        html = `<a id="${element.id}" href="#"${styleAttr}>${element.content || 'Link'}</a>`
+        const href = element.attributes?.href || '#';
+        const target = element.attributes?.target || '_self';
+        html = `<a id="${element.id}" href="${href}" target="${target}" data-link-element="true"${styleAttr}>${element.content || 'Link'}</a>`
         break
       case 'input':
         html = `<input id="${element.id}" type="${element.attributes.type || 'text'}" placeholder="${element.attributes.placeholder || ''}"${styleAttr} />`
@@ -455,5 +457,76 @@ export function parseCss(css: string, elements: QuizElement[]): QuizElement[] {
   }
   
   return updatedElements
+}
+
+// Helper function to extract all colors from an element's styles
+export function extractColorsFromStyles(styles: Record<string, string | undefined>): string[] {
+  const colors: string[] = [];
+  
+  // Color-related style properties
+  const colorProperties = [
+    'color',
+    'backgroundColor',
+    'borderColor',
+    'outlineColor',
+    'textDecorationColor'
+  ];
+  
+  // Extract colors from styles
+  Object.entries(styles || {}).forEach(([key, value]) => {
+    if (value && (
+      colorProperties.includes(key) || 
+      (key === 'border' && value.split(' ').length === 3)
+    )) {
+      // If it's a border property with 3 parts (width style color), extract the color
+      if (key === 'border' && value.split(' ').length === 3) {
+        const borderColor = value.split(' ')[2];
+        if (borderColor && (borderColor.startsWith('#') || borderColor.startsWith('rgb'))) {
+          colors.push(borderColor);
+        }
+      } 
+      // For regular color properties
+      else if (value.startsWith('#') || value.startsWith('rgb')) {
+        colors.push(value);
+      }
+    }
+  });
+  
+  return colors;
+}
+
+// Extract all unique colors used in a quiz
+export function getQuizColors(quiz: any): string[] {
+  const colors = new Set<string>();
+  
+  // Process all screens in the quiz
+  quiz.screens.forEach((screen: any) => {
+    // Process all sections in the screen
+    Object.values(screen.sections).forEach((section: any) => {
+      // Add section background color if defined
+      if (section.styles?.backgroundColor) {
+        colors.add(section.styles.backgroundColor);
+      }
+      
+      // Process all elements in the section
+      const processElement = (element: any) => {
+        // Extract colors from element styles
+        extractColorsFromStyles(element.styles).forEach(color => colors.add(color));
+        
+        // Process child elements if this is a group
+        if (element.isGroup && element.children) {
+          element.children.forEach(processElement);
+        }
+      };
+      
+      section.elements.forEach(processElement);
+    });
+  });
+  
+  // Filter out CSS variables and convert to array
+  return Array.from(colors).filter(color => 
+    (color.startsWith('#') || color.startsWith('rgb')) && 
+    !color.includes('var(--')
+  );
 }
 
