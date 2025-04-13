@@ -10,7 +10,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, description, children }: PageHeaderProps) {
   return (
-    <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-4 mb-6 w-full">
+    <div className="flex flex-col md:flex-row items-start md:items-center md:justify-between gap-4 mb-6 w-full pb-6 border-b border-border">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">{title}</h2>
         {description && (
