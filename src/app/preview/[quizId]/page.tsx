@@ -148,10 +148,11 @@ export default function PreviewPage({ params }: PreviewPageProps) {
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
       <title>Quiz Preview</title>
-      <!-- Import common web fonts -->
+      <!-- Import common web fonts with security attributes -->
       <link rel="preconnect" href="https://fonts.googleapis.com">
       <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&family=Raleway:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+      <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Open+Sans:wght@300;400;600;700&family=Lato:wght@300;400;700&family=Montserrat:wght@300;400;500;600;700&family=Source+Sans+Pro:wght@300;400;600;700&family=Raleway:wght@300;400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" referrerpolicy="no-referrer">
+      <!-- Backup local font declarations in case Google Fonts fails -->
       <style>
         /* Base styles */
         html, body {
@@ -161,6 +162,56 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           width: 100%;
           height: 100%;
           overflow: hidden;
+        }
+        
+        /* Fallback font definitions */
+        @font-face {
+          font-family: 'Roboto';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Roboto'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Open Sans';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Open Sans'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Lato';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Lato'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Montserrat';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Montserrat'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Source Sans Pro';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Source Sans Pro'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Raleway';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Raleway'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
+        }
+        
+        @font-face {
+          font-family: 'Poppins';
+          font-style: normal;
+          font-weight: 400;
+          src: local('Poppins'), local('Helvetica Neue'), local('Arial'), local('sans-serif');
         }
         
         /* Base styles for quiz */
@@ -330,6 +381,8 @@ export default function PreviewPage({ params }: PreviewPageProps) {
         srcDoc={fullHtml}
         className="w-full h-screen border-0"
         title="Quiz Preview"
+        sandbox="allow-scripts allow-same-origin allow-popups"
+        referrerPolicy="no-referrer"
       />
       {!isLoading && !error && screenIndicator}
     </>
