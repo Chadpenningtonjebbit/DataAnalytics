@@ -1,30 +1,42 @@
 "use client";
 
 import { AppHeader } from '@/components/layout/AppHeader';
-import { SectionCards } from '@/components/section-cards';
-import { ChartAreaInteractive } from '@/components/chart-area-interactive';
-import { DataTable } from '@/components/data-table';
 import { PageHeader } from '@/components/page-header';
-import { DatePickerWithRange } from '@/components/date-picker-with-range';
+import { SessionsChart } from '@/components/analytics/SessionsChart';
+import { BrowserChart } from '@/components/analytics/BrowserChart';
+import { DeviceChart } from '@/components/analytics/DeviceChart';
+import { AnalyticsSummary } from '@/components/analytics/AnalyticsSummary';
+import { MonthlySessionsChart } from '@/components/analytics/MonthlySessionsChart';
+import { ScreenTimeChart } from '@/components/analytics/ScreenTimeChart';
 
 export default function Analytics() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader pageType="dashboard" />
       
-      <main className="flex flex-1 flex-col bg-muted">
-        <div className="max-w-7xl mx-auto w-full p-12">
-          <div className="flex flex-col gap-4 md:gap-6">
-            <PageHeader
-              title="Analytics"
-              description="View performance metrics for all your quizzes"
-            >
-              <DatePickerWithRange />
-            </PageHeader>
-            
-            <SectionCards />
-            <ChartAreaInteractive />
-            <DataTable />
+      <main className="flex-1 p-12 bg-muted">
+        <div className="max-w-6xl mx-auto">
+          <PageHeader
+            title="Analytics Dashboard"
+            description="Track performance and user engagement metrics for your quizzes"
+          />
+          
+          <div className="mt-6">
+            <AnalyticsSummary />
+          </div>
+          
+          <div className="mt-6">
+            <MonthlySessionsChart />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+            <SessionsChart />
+            <BrowserChart />
+            <DeviceChart />
+          </div>
+          
+          <div className="mt-6">
+            <ScreenTimeChart />
           </div>
         </div>
       </main>
