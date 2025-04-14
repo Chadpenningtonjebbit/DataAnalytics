@@ -154,7 +154,11 @@ export function MonthlySessionsChart() {
     })
     
     // Create a new array reference to trigger proper animation
-    setFilteredData([...filtered])
+    // Use a longer delay to ensure React perceives this as a new render cycle
+    // This helps with the animation triggering properly
+    setTimeout(() => {
+      setFilteredData([...filtered]);
+    }, 50);
   }, [timeRange])
 
   return (
