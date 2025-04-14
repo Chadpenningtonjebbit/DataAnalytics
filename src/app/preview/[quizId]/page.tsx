@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useQuizStore } from '@/store/useQuizStore';
+import { useAnalyticsStore } from '@/store/useAnalyticsStore';
 import { generateScreenHtml, generateScreenCss } from '@/lib/utils';
 
 interface PreviewPageProps {
@@ -17,10 +18,17 @@ export default function PreviewPage({ params }: PreviewPageProps) {
   const [html, setHtml] = useState('');
   const [css, setCss] = useState('');
   const [currentScreenIndex, setCurrentScreenIndex] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [startTime, setStartTime] = useState<number>(0);
   
   // Get functions from store
   const loadQuiz = useQuizStore((state) => state.loadQuiz);
   const quiz = useQuizStore((state) => state.quiz);
+  
+  // Analytics store functions
+  const startSession = useAnalyticsStore((state) => state.startSession);
+  const recordScreenView = useAnalyticsStore((state) => state.recordScreenView);
+  const endSession = useAnalyticsStore((state) => state.endSession);
   
   useEffect(() => {
     const initializeQuiz = async () => {
@@ -39,6 +47,14 @@ export default function PreviewPage({ params }: PreviewPageProps) {
         // Get the updated quiz from store after loading
         const updatedQuiz = useQuizStore.getState().quiz;
         
+        // Start analytics session with user agent
+        if (typeof window !== 'undefined') {
+          // Create a session with the quizId and user agent
+          const session = startSession(updatedQuiz.id, navigator.userAgent);
+          setSessionId(session.id);
+          setStartTime(Date.now());
+        }
+        
         // Always start on the first screen (index 0)
         setCurrentScreenIndex(0);
         
@@ -50,6 +66,14 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           
           setHtml(generatedHtml);
           setCss(generatedCss);
+          
+          // We'll record the first screen view after a short delay to get accurate timing
+          setTimeout(() => {
+            if (sessionId) {
+              // Record with a small initial duration since this is the first screen
+              recordScreenView(sessionId, firstScreen.id, 1);
+            }
+          }, 1000);
         } else {
           console.error('No screens found in the quiz');
           setError("Failed to load quiz content");
@@ -64,7 +88,17 @@ export default function PreviewPage({ params }: PreviewPageProps) {
     };
     
     initializeQuiz();
-  }, [quizId, loadQuiz]); // Remove quiz from dependencies to avoid stale state
+    
+    // Clean up when component unmounts
+    return () => {
+      if (sessionId) {
+        // End the session when leaving the page
+        // Completed is true only if we reached the last screen
+        const isCompleted = currentScreenIndex === quiz?.screens?.length - 1;
+        endSession(sessionId, isCompleted);
+      }
+    };
+  }, [quizId, loadQuiz, startSession]);
   
   // Function to render the current screen
   const renderCurrentScreen = () => {
@@ -84,8 +118,18 @@ export default function PreviewPage({ params }: PreviewPageProps) {
     const generatedHtml = generateScreenHtml(screen);
     const generatedCss = generateScreenCss(screen);
     
+    // Calculate time spent on the previous screen
+    const now = Date.now();
+    const timeSpent = (now - startTime) / 1000; // Convert to seconds
+    setStartTime(now); // Reset for next screen
+    
     setHtml(generatedHtml);
     setCss(generatedCss);
+    
+    // Record screen view for analytics
+    if (sessionId && timeSpent > 0) {
+      recordScreenView(sessionId, screen.id, timeSpent);
+    }
   };
   
   // When current screen index changes, update the preview
@@ -106,6 +150,13 @@ export default function PreviewPage({ params }: PreviewPageProps) {
         } else {
           // Don't loop back - stay on the last screen
           console.log('Reached the last screen');
+          
+          // If we're on the last screen and this is a button click, mark the quiz as completed
+          if (sessionId && currentScreenIndex === quiz.screens.length - 1) {
+            endSession(sessionId, true);
+            // Generate a new session ID to prevent double-counting
+            setSessionId(null);
+          }
         }
       }
     };
@@ -114,7 +165,24 @@ export default function PreviewPage({ params }: PreviewPageProps) {
     return () => {
       window.removeEventListener('message', handleMessage);
     };
-  }, [currentScreenIndex, quiz]);
+  }, [currentScreenIndex, quiz, sessionId, endSession]);
+  
+  // Handle beforeunload event to record session end
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (sessionId) {
+        // End the session when leaving the page
+        // Completed is true only if we reached the last screen
+        const isCompleted = currentScreenIndex === quiz?.screens?.length - 1;
+        endSession(sessionId, isCompleted);
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [sessionId, currentScreenIndex, quiz, endSession]);
   
   // Show loading state
   if (isLoading) {

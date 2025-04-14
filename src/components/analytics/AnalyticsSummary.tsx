@@ -20,11 +20,25 @@ export function AnalyticsSummary() {
     avgScreensPerSession: 0
   })
   
-  // Use useEffect to prevent hydration mismatch
+  // Add force refresh trigger
+  const [refresh, setRefresh] = React.useState(0)
+
+  // Force a refresh every 5 seconds when the component is visible
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setRefresh(prev => prev + 1);
+    }, 5000);
+    
+    return () => clearInterval(timer);
+  }, []);
+  
+  // Use useEffect to prevent hydration mismatch and update with the current data
   React.useEffect(() => {
     // Get analytics data from store
     const getAllQuizAnalytics = useAnalyticsStore.getState().getAllQuizAnalytics
     const analyticsData = getAllQuizAnalytics()
+    
+    console.log('Analytics data loaded:', analyticsData);
     
     // Calculate summary metrics
     let sessions = 0
@@ -51,7 +65,7 @@ export function AnalyticsSummary() {
       totalScreenViews: screenViews,
       avgScreensPerSession
     })
-  }, []) // Empty dependency array means this runs once after mount
+  }, [refresh]) // Dependency on refresh means this will update periodically
   
   const { totalSessions, totalCompletions, completionRate, totalScreenViews, avgScreensPerSession } = summaryData
 
