@@ -395,6 +395,9 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     // Get width and height from styles, defaulting to 100% if not set
     const width = element.styles?.width || '100%';
     const height = element.styles?.height || '100%';
+    const padding = element.styles?.padding || '0px';
+    // Use the gap from layout if available, or from styles, or default to '8px'
+    const gap = element.layout?.gap || element.styles?.gap || '8px';
     
     return (
       <div 
@@ -406,9 +409,10 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
           justifyContent: element.layout?.justifyContent || 'flex-start',
           alignItems: element.layout?.alignItems || 'center',
           alignContent: element.layout?.alignContent || 'flex-start',
-          gap: element.layout?.gap || '8px',
+          gap: gap,
           width: width,
           height: height,
+          padding: padding,
           position: 'relative',
           zIndex: 1
         }}

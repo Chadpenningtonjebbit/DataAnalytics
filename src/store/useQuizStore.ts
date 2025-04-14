@@ -3,6 +3,13 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
 import { Quiz, QuizElement, QuizScreen, ViewMode, ElementType, SectionType, QuizSection, SectionLayout, FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent } from '@/types';
 import { debounce } from 'lodash';
+import { 
+  getDefaultStylesForType, 
+  getDefaultContentForType, 
+  getDefaultAttributesForType,
+  getGroupedElementStyles,
+  getDefaultGroupLayout
+} from '@/lib/defaultStyles';
 
 // Helper function to safely clone objects avoiding circular references
 const safeClone = <T>(obj: T): T => {
@@ -668,131 +675,10 @@ export const useQuizStore = create<QuizState>()(
     
     if (targetScreenIndex === -1) return state;
     
-    // Default styles based on element type
-    let defaultStyles: Record<string, string> = {};
-    let defaultContent = '';
-    let defaultAttributes = {};
-    
-    // Set default styles for each element type
-    switch (type) {
-      case 'button':
-        defaultStyles = {
-          padding: '8px 16px',
-          borderRadius: '4px',
-          backgroundColor: '#000000',
-          color: 'white',
-          fontSize: '16px',
-          fontWeight: '400',
-          fontFamily: 'Arial, sans-serif',
-          cursor: 'pointer',
-          textAlign: 'center'
-        };
-        defaultContent = 'Button';
-        break;
-      case 'text':
-        defaultStyles = {
-          fontSize: '16px',
-          color: '#000000',
-          fontWeight: '400',
-          fontFamily: 'Arial, sans-serif',
-          padding: '0px',
-          textAlign: 'center'
-        };
-        defaultContent = 'New Text';
-        break;
-      case 'image':
-        defaultStyles = {
-          width: 'auto',
-          height: 'auto',
-          objectFit: 'cover',
-          border: '1px solid #ddd'
-        };
-        defaultAttributes = { src: 'https://via.placeholder.com/100', alt: 'Image' };
-        break;
-      case 'link':
-        defaultStyles = {
-          color: '#355DF9',
-          textDecoration: 'underline',
-          cursor: 'pointer',
-          fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
-          textAlign: 'center'
-        };
-        defaultContent = 'Link Text';
-        defaultAttributes = { href: '#', target: '_blank' };
-        break;
-      case 'input':
-        defaultStyles = {
-          padding: '8px 12px',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          width: '100%',
-          fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
-          textAlign: 'center'
-        };
-        defaultAttributes = { placeholder: 'Enter text...', type: 'text' };
-        break;
-      case 'checkbox':
-        defaultStyles = {
-          margin: '8px 0',
-          textAlign: 'center'
-        };
-        defaultContent = 'Checkbox Label';
-        defaultAttributes = { value: 'option1', checked: false };
-        break;
-      case 'radio':
-        defaultStyles = {
-          margin: '8px 0',
-          textAlign: 'center'
-        };
-        defaultContent = 'Radio Option';
-        defaultAttributes = { name: 'radioGroup', value: 'option1' };
-        break;
-      case 'select':
-        defaultStyles = {
-          padding: '8px 12px',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          width: '100%',
-          fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
-          textAlign: 'center'
-        };
-        defaultContent = '<option value="1">Option 1</option><option value="2">Option 2</option>';
-        break;
-      case 'textarea':
-        defaultStyles = {
-          padding: '8px 12px',
-          borderRadius: '4px',
-          border: '1px solid #ccc',
-          width: '100%',
-          height: '100px',
-          fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
-          resize: 'vertical',
-          textAlign: 'center'
-        };
-        defaultAttributes = { placeholder: 'Enter multiple lines of text...' };
-        break;
-      case 'group':
-        defaultStyles = {
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '8px',
-          padding: '16px',
-          border: '0px solid transparent',
-          borderRadius: '4px',
-          textAlign: 'center'
-        };
-        defaultAttributes = { 
-          isGroup: true,
-          children: [] 
-        };
-        break;
-      default:
-        defaultStyles = {};
-    }
+    // Get default styles, content and attributes from our central module
+    const defaultStyles = getDefaultStylesForType(type);
+    const defaultContent = getDefaultContentForType(type);
+    const defaultAttributes = getDefaultAttributesForType(type);
     
     const newElement: QuizElement = {
       id: uuidv4(),
@@ -1420,7 +1306,7 @@ export const useQuizStore = create<QuizState>()(
   groupSelectedElements: () => set((state) => {
         const { quiz, selectedElementIds } = state;
     
-    // Need at least 2 elements to form a group
+        // Need at least 2 elements to form a group
         if (selectedElementIds.length < 2) {
           console.log('Need at least 2 elements to form a group');
           return state;
@@ -1429,7 +1315,7 @@ export const useQuizStore = create<QuizState>()(
         console.log('Grouping elements:', selectedElementIds);
     
         // Deep clone the state to avoid mutations
-    const newState = JSON.parse(JSON.stringify(state));
+        const newState = JSON.parse(JSON.stringify(state));
         const currentScreenIndex = quiz.currentScreenIndex;
         const currentScreen = newState.quiz.screens[currentScreenIndex];
         
@@ -1440,6 +1326,9 @@ export const useQuizStore = create<QuizState>()(
           body: 0,
           footer: 0
         };
+        
+        // Track the section object that contains most elements (to inherit its layout)
+        let primarySection: QuizSection | null = null;
         
         // Helper function to recursively find and remove selected elements from groups
         const findAndRemoveFromGroup = (group: QuizElement, targetIds: string[]): QuizElement[] => {
@@ -1509,6 +1398,11 @@ export const useQuizStore = create<QuizState>()(
             section.elements = section.elements.filter(
               (el: QuizElement) => !selectedElementIds.includes(el.id)
             );
+            
+            // Update the primary section if this one has more elements
+            if (!primarySection || directElements.length > sectionCounts[primarySection.id]) {
+              primarySection = section;
+            }
           }
           
           // Find elements in groups in this section
@@ -1530,6 +1424,11 @@ export const useQuizStore = create<QuizState>()(
                 if (element.children.length === 0) {
                   section.elements.splice(i, 1);
                   i--;
+                }
+                
+                // Update the primary section if this one has more elements
+                if (!primarySection || foundInGroup.length > sectionCounts[primarySection.id]) {
+                  primarySection = section;
                 }
               }
             }
@@ -1553,38 +1452,108 @@ export const useQuizStore = create<QuizState>()(
             maxCount = count;
             targetSection = section as SectionType;
           }
-    }
-    
-    // Create a new group element
+        }
+        
+        // Determine the best layout for the new group based on the elements being grouped
+        // and the parent section's layout
+        const determineOptimalLayout = (): SectionLayout => {
+          // Check if all elements being grouped share common layout properties
+          let allAreGroups = true;
+          let commonDirection: FlexDirection | null = null;
+          let commonWrap: FlexWrap | null = null;
+          let commonJustifyContent: JustifyContent | null = null;
+          let commonAlignItems: AlignItems | null = null;
+          let commonAlignContent: AlignContent | null = null;
+          let commonGap: string | null = null;
+          
+          // Check if elements have consistent layout properties
+          for (const el of elementsToGroup) {
+            if (el.type !== 'group' || !el.layout) {
+              allAreGroups = false;
+              break;
+            }
+            
+            if (commonDirection === null) {
+              commonDirection = el.layout.direction;
+            } else if (commonDirection !== el.layout.direction) {
+              commonDirection = null;
+              break;
+            }
+            
+            if (commonWrap === null) {
+              commonWrap = el.layout.wrap;
+            } else if (commonWrap !== el.layout.wrap) {
+              commonWrap = null;
+              break;
+            }
+            
+            if (commonJustifyContent === null) {
+              commonJustifyContent = el.layout.justifyContent;
+            } else if (commonJustifyContent !== el.layout.justifyContent) {
+              commonJustifyContent = null;
+              break;
+            }
+            
+            if (commonAlignItems === null) {
+              commonAlignItems = el.layout.alignItems;
+            } else if (commonAlignItems !== el.layout.alignItems) {
+              commonAlignItems = null;
+              break;
+            }
+            
+            if (commonAlignContent === null) {
+              commonAlignContent = el.layout.alignContent;
+            } else if (commonAlignContent !== el.layout.alignContent) {
+              commonAlignContent = null;
+              break;
+            }
+            
+            if (commonGap === null) {
+              commonGap = el.layout.gap;
+            } else if (commonGap !== el.layout.gap) {
+              commonGap = null;
+              break;
+            }
+          }
+          
+          // If all elements are groups with consistent layout, use that layout
+          if (allAreGroups && commonDirection) {
+            return {
+              direction: commonDirection || 'row',
+              wrap: commonWrap || 'nowrap',
+              justifyContent: commonJustifyContent || 'flex-start',
+              alignItems: commonAlignItems || 'center',
+              alignContent: commonAlignContent || 'flex-start',
+              gap: commonGap || '8px'
+            };
+          }
+          
+          // Otherwise, inherit from the parent section
+          if (primarySection && primarySection.layout) {
+            return { ...primarySection.layout };
+          }
+          
+          // Fall back to default if nothing else works
+          return getDefaultGroupLayout();
+        };
+        
+        // Create a new group element
         const newGroupId = uuidv4();
         const newGroup: QuizElement = {
           id: newGroupId,
           type: 'group' as ElementType,
           content: `Group (${elementsToGroup.length} items)`,
-      styles: {
-            width: 'auto',
-        padding: '8px',
-            border: '1px solid #e2e8f0',
-            borderRadius: '4px',
-            backgroundColor: 'rgba(255, 255, 255, 0.5)'
-          },
+          styles: getGroupedElementStyles(),
           sectionId: targetSection,
-      isGroup: true,
+          isGroup: true,
           children: elementsToGroup.map(el => ({
             ...el,
             groupId: newGroupId, // Set the groupId of children
             sectionId: targetSection // Update sectionId to match the group
           })),
           attributes: {},
-          // Default flexbox layout
-      layout: {
-            direction: 'row',
-            wrap: 'nowrap',
-            justifyContent: 'flex-start',
-            alignItems: 'center',
-        alignContent: 'flex-start',
-            gap: '8px'
-          }
+          // Use optimal layout based on context
+          layout: determineOptimalLayout()
         };
         
         // Add the new group to the target section
@@ -1593,11 +1562,11 @@ export const useQuizStore = create<QuizState>()(
         // Update selected element to be the new group
         newState.selectedElementIds = [newGroupId];
     
-    // Save to history
-    get().saveToHistory(newState.quiz);
+        // Save to history
+        get().saveToHistory(newState.quiz);
     
         console.log(`Created group ${newGroupId} with ${elementsToGroup.length} elements in ${targetSection} section`);
-    return newState;
+        return newState;
   }),
   
       ungroupElements: (groupId: string) => set((state) => {
