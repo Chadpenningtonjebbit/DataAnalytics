@@ -119,6 +119,9 @@ export function ScreenTimeChart() {
               activeDot={{
                 r: 6,
               }}
+              isAnimationActive={true}
+              animationDuration={500}
+              animationEasing="ease-in-out"
             >
               <LabelList
                 position="top"
@@ -130,7 +133,7 @@ export function ScreenTimeChart() {
           </LineChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col items-start gap-2 text-sm">
+      <CardFooter className="flex-col items-center text-center gap-2 text-sm">
         <div className="flex gap-2 font-medium leading-none">
           {trendPercentage > 0 ? "Trending up" : "Trending down"} by {Math.abs(trendPercentage)}% this month <TrendingUp className="h-4 w-4" />
         </div>

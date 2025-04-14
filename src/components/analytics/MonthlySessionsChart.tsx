@@ -153,7 +153,8 @@ export function MonthlySessionsChart() {
       return date >= startDate
     })
     
-    setFilteredData(filtered)
+    // Create a new array reference to trigger proper animation
+    setFilteredData([...filtered])
   }, [timeRange])
 
   return (
@@ -252,6 +253,9 @@ export function MonthlySessionsChart() {
               fill="url(#fillMobile)"
               stroke="#22C55E"
               stackId="a"
+              isAnimationActive={true}
+              animationDuration={500}
+              animationEasing="ease-in-out"
             />
             <Area
               dataKey="desktop"
@@ -259,6 +263,9 @@ export function MonthlySessionsChart() {
               fill="url(#fillDesktop)"
               stroke="#355DF9"
               stackId="a"
+              isAnimationActive={true}
+              animationDuration={500}
+              animationEasing="ease-in-out"
             />
             <ChartLegend content={<ChartLegendContent />} />
           </AreaChart>

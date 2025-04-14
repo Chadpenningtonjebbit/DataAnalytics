@@ -129,7 +129,7 @@ export function DeviceChart() {
           </PieChart>
         </ChartContainer>
       </CardContent>
-      <CardFooter className="flex-col gap-2 text-sm">
+      <CardFooter className="flex-col items-center text-center gap-2 text-sm">
         <div className="flex items-center gap-2 font-medium leading-none">
           Trending up by {deviceData.growthRate}% this month <TrendingUp className="h-4 w-4" />
         </div>
