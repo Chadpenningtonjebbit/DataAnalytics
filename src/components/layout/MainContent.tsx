@@ -45,7 +45,11 @@ export function MainContent() {
   
   const { theme } = useTheme();
   // Get panel sizes from context
-  const { leftPanelSize, rightPanelSize, isPanelCollapsed } = usePanelSizes();
+  const panelSizes = usePanelSizes();
+  const leftPanelSize = panelSizes.leftPanelSize;
+  const rightPanelSize = panelSizes.rightPanelSize;
+  // Handle potential missing property with a boolean check
+  const isPanelCollapsed = 'isPanelCollapsed' in panelSizes ? panelSizes.isPanelCollapsed : false;
   
   // Calculate panel width and positioning dynamically with equal gaps on all sides
   // In Layout, the panels have a 16px gap from edges (4px in the "top-4 left-4" class)
