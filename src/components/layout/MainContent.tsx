@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -16,7 +16,6 @@ import { SectionType } from '@/types';
 import { useTheme } from '@/components/ThemeProvider';
 import { usePanelSizes } from './Layout';
 import { ScreenThumbnail } from '@/components/quiz-builder/ScreenThumbnail';
-import { ThumbnailContextMenu } from '@/components/quiz-builder/ThumbnailContextMenu';
 
 export function MainContent() {
   const { 
@@ -46,22 +45,25 @@ export function MainContent() {
   
   const { theme } = useTheme();
   // Get panel sizes from context
-  const { leftPanelSize, rightPanelSize } = usePanelSizes();
+  const { leftPanelSize, rightPanelSize, isPanelCollapsed } = usePanelSizes();
   
   // Calculate panel width and positioning dynamically with equal gaps on all sides
   // In Layout, the panels have a 16px gap from edges (4px in the "top-4 left-4" class)
   const sideGap = 16; // 16px matches the Layout's spacing
-  const panelWidth = `calc(100vw - ${leftPanelSize + rightPanelSize + (sideGap * 4)}px)`;
-  const panelLeftPosition = `calc(${leftPanelSize}px + ${sideGap * 2}px)`;
+  // When collapsed, use the actual collapsed width (52px) from ResizablePanel
+  const collapsedBarWidth = 52;
+  const effectiveLeftPanelSize = isPanelCollapsed ? collapsedBarWidth : leftPanelSize;
+  const panelWidth = `calc(100vw - ${effectiveLeftPanelSize + rightPanelSize + (sideGap * 4)}px)`;
+  const panelLeftPosition = `calc(${effectiveLeftPanelSize}px + ${sideGap * 2}px)`;
   
   // Add zoom state
   const [zoomLevel, setZoomLevel] = useState(100);
   
-  // Add state for collapsing thumbnails
-  const [thumbnailsCollapsed, setThumbnailsCollapsed] = useState(false);
+  // Fixed bottom panel height for thumbnails
+  const bottomPanelHeight = 120; // Height for thumbnail section + controls
   
-  // Calculate bottom panel height for centering calculations
-  const bottomPanelHeight = thumbnailsCollapsed ? 48 : 140; // 48px when collapsed (controls only), 140px when expanded
+  // Add extra spacing to prevent overlap
+  const bottomPanelTotalHeight = bottomPanelHeight + 48; // Include padding and margin
   
   const handleViewModeChange = (mode: string) => {
     console.log('View mode change triggered:', mode);
@@ -121,10 +123,11 @@ export function MainContent() {
       
       const rect = mainContentEl.getBoundingClientRect();
       const contentPadding = 32; // 16px padding on each side
+      const headerHeight = 48; // Header height is 12 (h-12 = 3rem = 48px)
       
       // Calculate the actual available width, accounting for side panels
-      const actualAvailableWidth = rect.width - contentPadding - leftPanelSize - rightPanelSize - (sideGap * 4);
-      const availHeight = rect.height - contentPadding - bottomPanelHeight;
+      const actualAvailableWidth = rect.width - contentPadding - effectiveLeftPanelSize - rightPanelSize - (sideGap * 4);
+      const availHeight = rect.height - contentPadding - bottomPanelTotalHeight - headerHeight;
       
       setAvailableWidth(actualAvailableWidth);
       setAvailableHeight(availHeight);
@@ -166,18 +169,19 @@ export function MainContent() {
     return () => {
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [deviceSizes, viewMode, leftPanelSize, rightPanelSize, bottomPanelHeight, thumbnailsCollapsed, zoomLevel, sideGap]);
+  }, [deviceSizes, viewMode, effectiveLeftPanelSize, rightPanelSize, bottomPanelTotalHeight, zoomLevel, sideGap, isPanelCollapsed]);
   
   // Calculate the horizontal offset to center the canvas accounting for unequal panel sizes
   const horizontalOffset = useMemo(() => {
     // Calculate the difference between the left and right panel sizes
-    const panelDifference = leftPanelSize - rightPanelSize;
+    // Use effectiveLeftPanelSize to account for collapsed state
+    const panelDifference = effectiveLeftPanelSize - rightPanelSize;
     
     // Return half of the difference to adjust the position
     // If leftPanel is bigger, move canvas right (positive value)
     // If rightPanel is bigger, move canvas left (negative value)
     return panelDifference / 2;
-  }, [leftPanelSize, rightPanelSize]);
+  }, [effectiveLeftPanelSize, rightPanelSize]);
   
   // Get current device size based on view mode
   const currentDeviceSize = deviceSizes[viewMode];
@@ -359,6 +363,8 @@ export function MainContent() {
       sectionStyle.flex = '1 1 auto';
       sectionStyle.height = '100%';
       sectionStyle.overflow = 'auto';
+      sectionStyle.display = 'flex';
+      sectionStyle.flexDirection = 'column';
     }
     
     return (
@@ -370,7 +376,7 @@ export function MainContent() {
           ${sectionId === 'header' ? 'border-b border-border' : ''}
           ${sectionId === 'footer' ? 'border-t border-border' : ''}
           ${section.elements.length === 0 ? 'min-h-[60px]' : ''}
-          ${sectionId === 'body' ? 'flex-1 h-full' : ''}
+          ${sectionId === 'body' ? 'flex-1 h-full overflow-auto' : ''}
         `}
         style={sectionStyle}
       >
@@ -446,138 +452,43 @@ export function MainContent() {
     }
   };
   
-  // Toggle thumbnails visibility with smooth transition
-  const toggleThumbnails = () => {
-    setThumbnailsCollapsed(prev => !prev);
-  };
-  
-  // Function to update screen name
-  const updateScreenName = (name: string) => {
-    const currentScreenId = quiz.screens[quiz.currentScreenIndex].id;
-    const updatedScreens = quiz.screens.map(screen => 
-      screen.id === currentScreenId ? { ...screen, name } : screen
-    );
-    
-    const updatedQuiz = {
-      ...quiz,
-      screens: updatedScreens
-    };
-    
-    // Update the quiz state
-    setQuiz(updatedQuiz);
-    saveToHistory(updatedQuiz);
-  };
-
-  // State for editing screen name
-  const [isEditingName, setIsEditingName] = useState(false);
-  const [screenNameInput, setScreenNameInput] = useState('');
-  const nameInputRef = useRef<HTMLInputElement>(null);
-  
-  // Update the input value when current screen changes
-  useEffect(() => {
-    setScreenNameInput(quiz.screens[quiz.currentScreenIndex].name);
-  }, [quiz.currentScreenIndex, quiz.screens]);
-  
-  // Handle click outside to save name
-  useEffect(() => {
-    if (!isEditingName) return;
-    
-    const handleClickOutside = (e: MouseEvent) => {
-      if (nameInputRef.current && !nameInputRef.current.contains(e.target as Node)) {
-        if (screenNameInput.trim()) {
-          updateScreenName(screenNameInput);
-        }
-        setIsEditingName(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [isEditingName, screenNameInput]);
-  
-  // Focus input when editing starts
-  useEffect(() => {
-    if (isEditingName && nameInputRef.current) {
-      nameInputRef.current.focus();
-      nameInputRef.current.select();
-    }
-  }, [isEditingName]);
-  
   // We'll only use transitions for thumbnail collapse/expand, not for resizing
   const getCanvasTransition = () => {
     return `top 0.3s ease-in-out`;
   };
   
-  // Update canvas centering when thumbnails collapse/expand
+  // Update canvas centering when left panel is toggled
   useEffect(() => {
-    // Force an immediate resize event to recalculate positions when thumbnails are toggled
+    // Force an immediate resize event to recalculate positions when panel is toggled
     window.dispatchEvent(new Event('resize'));
-  }, [thumbnailsCollapsed]);
+  }, [isPanelCollapsed]);
   
   return (
     <div className="flex flex-col h-full">
       <div 
-        className="flex-1 overflow-auto p-4 md:p-8 flex items-center justify-center relative"
+        className="flex-1 overflow-auto pt-4 px-4 pb-4 md:p-8 flex items-center justify-center relative"
         style={{
           ...gridBackgroundStyles,
-          paddingBottom: `${bottomPanelHeight + 32}px`, // Add padding to account for bottom panel + some spacing
+          paddingBottom: `${bottomPanelTotalHeight}px`, // Increased padding to avoid overlap
         }}
       >
         {/* Canvas - centered horizontally and vertically, adjusted for unequal panel sizes */}
         <div 
-          className="relative bg-background shadow-lg border border-border mx-auto"
+          className="relative bg-background shadow-lg border border-border mx-auto mt-6 mb-10"
           style={{
             ...canvasStyle,
             position: 'relative',
-            top: `-${bottomPanelHeight / 2}px`, // Shift canvas up by half the panel height for perfect centering
             left: `${horizontalOffset}px`, // Adjust horizontal position to account for unequal panel sizes
-            transition: getCanvasTransition(), // Only animate top for thumbnail collapse
             maxWidth: '100%', // Ensure it doesn't overflow horizontally
-            maxHeight: `calc(100vh - ${bottomPanelHeight + 64}px)`, // Ensure it doesn't overflow vertically
+            maxHeight: `calc(100vh - ${bottomPanelTotalHeight + 64}px)`, // Increased space for bottom panel
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden', // Prevent canvas from overflowing, let sections handle scrolling
           }}
           onClick={handleCanvasClick}
           tabIndex={0}
           data-canvas="true"
         >
-          {/* Screen Name Label - positioned at left above the canvas */}
-          <div 
-            className="absolute z-30 left-2 -top-8"
-          >
-            {isEditingName ? (
-              <div className="h-6"> {/* Fixed height container */}
-                <input
-                  ref={nameInputRef}
-                  type="text"
-                  value={screenNameInput}
-                  onChange={(e) => setScreenNameInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      if (screenNameInput.trim()) {
-                        updateScreenName(screenNameInput);
-                      }
-                      setIsEditingName(false);
-                    } else if (e.key === 'Escape') {
-                      setScreenNameInput(quiz.screens[quiz.currentScreenIndex].name);
-                      setIsEditingName(false);
-                    }
-                  }}
-                  className="text-sm px-0 py-0 outline-none border-none w-[200px] bg-transparent"
-                  placeholder="Screen Name"
-                />
-              </div>
-            ) : (
-              <div 
-                className="text-sm font-medium cursor-text h-6" /* Removed hover:text-primary transition-colors */
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditingName(true);
-                }}
-              >
-                <span>{quiz.screens[quiz.currentScreenIndex].name}</span>
-              </div>
-            )}
-          </div>
-
           {/* Device Frame */}
           <div className="absolute inset-0 flex flex-col h-full" style={{ boxSizing: 'border-box' }}>
             {/* Screen Content */}
@@ -585,7 +496,7 @@ export function MainContent() {
               {/* Sections */}
               <div className="flex flex-col h-full" style={{ boxSizing: 'border-box' }}>
                 {hasHeader && renderSection('header')}
-                <div className="flex-1" style={{ boxSizing: 'border-box' }}>
+                <div className="flex-1 overflow-hidden" style={{ boxSizing: 'border-box' }}>
                   {renderSection('body')}
                 </div>
                 {hasFooter && renderSection('footer')}
@@ -596,7 +507,7 @@ export function MainContent() {
 
         {/* Floating Bottom Screen Navigation and Controls */}
         <div 
-          className="absolute bottom-4 z-20" 
+          className="absolute bottom-8 z-20" 
           style={{ 
             left: panelLeftPosition, 
             width: panelWidth,
@@ -605,43 +516,37 @@ export function MainContent() {
           <div 
             className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-3 w-full"
           >
-            {/* Screen Thumbnails - Canva-style - conditionally rendered based on collapsed state */}
-            <div 
-              className={`
-                overflow-hidden transition-all duration-300 ease-in-out
-                ${thumbnailsCollapsed ? 'max-h-0 opacity-0 mb-0' : 'max-h-[120px] opacity-100 mb-2'}
-              `}
-            >
-              <div className="overflow-x-auto overflow-y-hidden px-1 pb-2">
-                <div className="flex items-center gap-3 py-1 min-h-[80px]">
-                  {quiz.screens.map((screen, index) => (
-                    <ThumbnailContextMenu
-                      key={screen.id}
-                      screenId={screen.id}
-                      canDelete={quiz.screens.length > 1}
+            {/* Screen Thumbnails */}
+            <div className="w-full flex flex-col pt-2 pb-1 mb-1">
+              <div className="flex gap-2 pb-2 pt-1 overflow-x-auto scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent px-1" style={{ msOverflowStyle: 'none', scrollbarWidth: 'thin' }}>
+                {quiz.screens.map((screen, index) => (
+                  <ScreenThumbnail 
+                    key={screen.id} 
+                    screen={screen} 
+                    index={index}
+                    isActive={quiz.currentScreenIndex === index}
+                    onSelect={() => setCurrentScreen(index)}
+                    onDelete={() => removeScreen(screen.id)}
+                    canDelete={quiz.screens.length > 1}
+                    id={`screen-thumbnail-${screen.id}`}
+                  />
+                ))}
+                
+                {/* Add Screen button */}
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div 
+                      onClick={addScreen}
+                      className="w-[120px] h-[75px] flex-shrink-0 bg-background border border-dashed border-border rounded-md cursor-pointer hover:border-primary hover:bg-accent/50 transition-colors duration-150 flex items-center justify-center"
+                      style={{ aspectRatio: "16/10", maxHeight: "75px" }}
                     >
-                      <ScreenThumbnail
-                        id={`screen-thumbnail-${screen.id}`}
-                        screen={screen}
-                        index={index}
-                        isActive={quiz.currentScreenIndex === index}
-                        onSelect={() => setCurrentScreen(index)}
-                        onDelete={() => removeScreen(screen.id)}
-                        canDelete={quiz.screens.length > 1}
-                      />
-                    </ThumbnailContextMenu>
-                  ))}
-                  
-                  {/* Add Screen Button at the end of scrollable list - simplified */}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="w-[120px] h-[75px] rounded-md border flex-shrink-0"
-                    onClick={addScreen}
-                  >
-                    <Plus className="h-5 w-5" />
-                  </Button>
-                </div>
+                      <Plus className="h-5 w-5 text-muted-foreground" />
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Add New Screen</p>
+                  </TooltipContent>
+                </Tooltip>
               </div>
             </div>
             
@@ -698,7 +603,7 @@ export function MainContent() {
                 </Tooltip>
               </div>
               
-              {/* Middle space - empty now */}
+              {/* Middle space - empty */}
               <div className="flex-1"></div>
               
               {/* Right side: undo/redo and zoom controls */}
@@ -774,26 +679,6 @@ export function MainContent() {
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     <p>Zoom In</p>
-                  </TooltipContent>
-                </Tooltip>
-                
-                {/* Divider */}
-                <div className="h-6 w-px bg-border mx-1"></div>
-                
-                {/* Collapse/Expand thumbnails button */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8" 
-                      onClick={toggleThumbnails}
-                    >
-                      {thumbnailsCollapsed ? <Minimize className="h-4 w-4" /> : <Maximize className="h-4 w-4" />}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    <p>{thumbnailsCollapsed ? "Show Thumbnails" : "Hide Thumbnails"}</p>
                   </TooltipContent>
                 </Tooltip>
               </div>
