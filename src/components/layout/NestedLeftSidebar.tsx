@@ -33,7 +33,7 @@ import {
   Trash
 } from 'lucide-react';
 import { DraggableElement } from '@/components/quiz-builder/DraggableElement';
-import { ElementType, SectionType, ThemeItem } from '@/types';
+import { ElementType, SectionType, ThemeItem, ThemeSettings } from '@/types';
 import { useQuizStore } from '@/store/useQuizStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
