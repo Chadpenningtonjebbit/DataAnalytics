@@ -98,7 +98,7 @@ export function NestedLeftSidebar() {
   // Safe way to call the context function if it exists
   const handlePanelCollapsedChange = (collapsed: boolean) => {
     if ('onLeftPanelCollapsedChange' in panelSizes) {
-      panelSizes.onLeftPanelCollapsedChange(collapsed);
+      (panelSizes.onLeftPanelCollapsedChange as (collapsed: boolean) => void)(collapsed);
     }
   };
   
