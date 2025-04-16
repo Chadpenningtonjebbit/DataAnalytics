@@ -946,6 +946,8 @@ export const useQuizStore = create<QuizState>()(
                   themeValue = currentTheme.primaryColor;
                 } else if (styleKey === 'fontFamily' && ['text', 'button', 'link'].includes(element.type)) {
                   themeValue = currentTheme.fontFamily;
+                } else if (styleKey === 'borderRadius' && ['button', 'image'].includes(element.type)) {
+                  themeValue = currentTheme.cornerRadius;
                 }
                 
                 // If the new value is different from the theme value, consider it a manual override
