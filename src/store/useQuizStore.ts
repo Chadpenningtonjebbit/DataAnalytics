@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Quiz, QuizElement, QuizScreen, ViewMode, ElementType, SectionType, QuizSection, SectionLayout, FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent } from '@/types';
+import { Quiz, QuizElement, QuizScreen, ViewMode, ElementType, SectionType, QuizSection, SectionLayout, FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent, ThemeSettings, ThemeItem } from '@/types';
 import { debounce } from 'lodash';
 import { 
   getDefaultStylesForType, 
@@ -20,6 +20,65 @@ const safeClone = <T>(obj: T): T => {
     return JSON.parse(JSON.stringify(obj));
   }
 };
+
+// Default theme settings
+const defaultTheme: ThemeSettings = {
+  primaryColor: '#000000', // Black
+  fontFamily: 'Arial, sans-serif',
+  backgroundColor: '#ffffff' // White
+};
+
+// Predefined themes
+const predefinedThemes: ThemeItem[] = [
+  {
+    id: 'theme1',
+    name: 'Theme #1',
+    settings: {
+      primaryColor: '#000000', // Black
+      fontFamily: 'Arial, sans-serif',
+      backgroundColor: '#ffffff' // White
+    }
+  },
+  {
+    id: 'theme2',
+    name: 'Theme #2',
+    settings: {
+      primaryColor: '#0ea5e9', // Sky blue
+      fontFamily: 'Helvetica, sans-serif',
+      backgroundColor: '#f0f9ff' // Light blue bg
+    }
+  },
+  {
+    id: 'theme3',
+    name: 'Theme #3',
+    settings: {
+      primaryColor: '#10b981', // Emerald green
+      fontFamily: "'Montserrat', sans-serif",
+      backgroundColor: '#ecfdf5' // Light green bg
+    }
+  },
+  {
+    id: 'theme4',
+    name: 'Theme #4',
+    settings: {
+      primaryColor: '#8b5cf6', // Purple
+      fontFamily: "'Poppins', sans-serif",
+      backgroundColor: '#f5f3ff' // Light purple bg
+    }
+  },
+  {
+    id: 'theme5',
+    name: 'Theme #5',
+    settings: {
+      primaryColor: '#ef4444', // Red
+      fontFamily: "'Roboto', sans-serif",
+      backgroundColor: '#fef2f2' // Light red bg
+    }
+  }
+];
+
+// Default theme item (pointing to the first predefined theme)
+const defaultThemeItem: ThemeItem = predefinedThemes[0];
 
 // Helper function to find and update a group recursively
 const findAndUpdateGroup = (group: QuizElement, targetGroupId: string, newElements: QuizElement[]): QuizElement => {
@@ -76,7 +135,10 @@ const createDefaultQuiz = (name: string = 'New Quiz'): Quiz => {
     name,
     currentScreenIndex: 0,
     screens: [initialScreen],
-    lastEdited: new Date().toISOString()
+    lastEdited: new Date().toISOString(),
+    theme: { ...defaultTheme }, // Include default theme settings
+    themes: [...predefinedThemes], // Include all predefined themes
+    activeThemeId: 'theme1'
   };
 };
 
@@ -152,7 +214,6 @@ interface QuizState {
   historyIndex: number;
   futureSaves: Quiz[];
   clipboard: QuizElement[];
-  clipboardScreen: QuizScreen | null;
   
   // Quiz management actions
   createQuiz: (name: string) => void;
@@ -163,10 +224,19 @@ interface QuizState {
   renameQuiz: (id: string, newName: string) => boolean;
   duplicateQuiz: (id: string) => Promise<string | null>;
   
+  // Theme actions
+  updateTheme: (themeSettings: Partial<ThemeSettings>) => void;
+  applyThemeToElements: (options?: { elementIds?: string[], resetAll?: boolean }) => void;
+  applyThemeToSections: (options?: { sectionIds?: SectionType[] }) => void;
+  applyThemeToAllElements: (quizToUpdate?: Quiz) => Quiz;
+  switchTheme: (themeId: string) => void;
+  
   // Screen actions
   addScreen: () => void;
   removeScreen: (screenId: string) => void;
   setCurrentScreen: (index: number) => void;
+  renameScreen: (screenId: string, newName: string) => void;
+  duplicateScreen: (screenId: string) => void;
   
   // Section actions
   toggleSection: (sectionId: SectionType) => void;
@@ -199,10 +269,6 @@ interface QuizState {
   undo: () => void;
   redo: () => void;
   saveToHistory: (quiz: Quiz) => void;
-  
-  // New actions
-  copyScreen: (screenId: string) => void;
-  pasteScreenAfter: (afterScreenId: string) => void;
 }
 
 // Storage helper functions
@@ -211,15 +277,42 @@ const getQuizListStorageKey = () => 'quiz-builder-quizlist';
 
 // Save a quiz to its own storage key
 const saveQuizToStorage = (quiz: Quiz) => {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined') return false;
+  
   try {
-    const quizId = quiz.id;
-    const quizData = safeClone(quiz);
-    quizData.lastEdited = new Date().toISOString();
-    localStorage.setItem(getQuizStorageKey(quizId), JSON.stringify(quizData));
+    // Ensure quiz has proper theme structure before saving
+    const migratedQuiz = migrateThemeData(quiz);
+    
+    // Update lastEdited timestamp
+    migratedQuiz.lastEdited = new Date().toISOString();
+    
+    const key = getQuizStorageKey(migratedQuiz.id);
+    localStorage.setItem(key, JSON.stringify(migratedQuiz));
+    
+    // Update quiz list in storage
+    const quizList = loadQuizListFromStorage();
+    const existingIndex = quizList.findIndex(item => item.id === migratedQuiz.id);
+    
+    if (existingIndex >= 0) {
+      // Update existing quiz in list
+      quizList[existingIndex] = {
+        id: migratedQuiz.id,
+        name: migratedQuiz.name,
+        lastEdited: migratedQuiz.lastEdited
+      };
+    } else {
+      // Add new quiz to list
+      quizList.push({
+        id: migratedQuiz.id,
+        name: migratedQuiz.name,
+        lastEdited: migratedQuiz.lastEdited
+      });
+    }
+    
+    saveQuizListToStorage(quizList);
     return true;
   } catch (error) {
-    console.error('Failed to save quiz to localStorage:', error);
+    console.error('Failed to save quiz to storage:', error);
     return false;
   }
 };
@@ -294,6 +387,57 @@ const loadQuizListFromStorage = (): QuizListItem[] => {
   }
 };
 
+// Helper function to check if element has manual style overrides
+const hasManualStyleOverride = (element: QuizElement, styleKey: string): boolean => {
+  // If the element has themeStyles array, check if the property is in it
+  if (element.themeStyles) {
+    // If the property is in the themeStyles array, it means it was set by a theme
+    // and not manually overridden
+    return !element.themeStyles.includes(styleKey) && element.styles && styleKey in element.styles;
+  }
+  
+  // For legacy elements without themeStyles array, compare with default theme values
+  if (element.styles && styleKey in element.styles) {
+    // Get the current value
+    const currentValue = element.styles[styleKey];
+    
+    // Compare with default theme values
+    if (styleKey === 'backgroundColor' && element.type === 'button') {
+      return currentValue !== defaultTheme.primaryColor;
+    }
+    
+    if (styleKey === 'fontFamily' && ['text', 'button', 'link'].includes(element.type)) {
+      return currentValue !== defaultTheme.fontFamily;
+    }
+  }
+  
+  // Style not present or not an override
+  return false;
+};
+
+// Get default styles with theme applied
+const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): { 
+  styles: Record<string, string>; 
+  themeStyles: string[];
+} => {
+  const defaultStyles = getDefaultStylesForType(type);
+  const themeStyles: string[] = [];
+  
+  // Apply theme settings based on element type
+  if (type === 'button') {
+    defaultStyles.backgroundColor = theme.primaryColor;
+    themeStyles.push('backgroundColor');
+  }
+  
+  // Apply font family to text elements
+  if (['text', 'button', 'link'].includes(type)) {
+    defaultStyles.fontFamily = theme.fontFamily;
+    themeStyles.push('fontFamily');
+  }
+  
+  return { styles: defaultStyles, themeStyles };
+};
+
 // Create the store with persistence middleware
 export const useQuizStore = create<QuizState>()(
   persist(
@@ -305,18 +449,17 @@ export const useQuizStore = create<QuizState>()(
         name: createDefaultQuiz().name,
         lastEdited: new Date().toISOString()
       }],
-  selectedElementIds: [],
-  selectedSectionId: null,
-  viewMode: 'desktop',
-  codeView: {
-    html: '',
-    css: '',
-  },
+      selectedElementIds: [],
+      selectedSectionId: null,
+      viewMode: 'desktop',
+      codeView: {
+        html: '',
+        css: '',
+      },
       history: [safeClone(createDefaultQuiz())],
-  historyIndex: 0,
+      historyIndex: 0,
       futureSaves: [],
-  clipboard: [],
-      clipboardScreen: null,
+      clipboard: [],
       
       // Quiz management actions
       createQuiz: (name: string) => {
@@ -497,13 +640,26 @@ export const useQuizStore = create<QuizState>()(
       // The implementations can stay the same, just need to be included here
   
   addScreen: () => set((state) => {
+    const theme = state.quiz.theme || defaultTheme;
+    
+    // Create default sections with theme's background color
+    const createSectionWithTheme = (id: SectionType, name: string, enabled: boolean): QuizSection => {
+      const section = createDefaultSection(id, name, enabled);
+      // Apply theme's background color
+      section.styles = {
+        ...section.styles,
+        backgroundColor: theme.backgroundColor
+      };
+      return section;
+    };
+    
     const newScreen: QuizScreen = {
       id: uuidv4(),
       name: `Screen ${state.quiz.screens.length + 1}`,
       sections: {
-        header: createDefaultSection('header', 'Header', false),
-        body: createDefaultSection('body', 'Body', true),
-        footer: createDefaultSection('footer', 'Footer', false),
+        header: createSectionWithTheme('header', 'Header', false),
+        body: createSectionWithTheme('body', 'Body', true),
+        footer: createSectionWithTheme('footer', 'Footer', false),
       },
     };
     
@@ -675,10 +831,11 @@ export const useQuizStore = create<QuizState>()(
     
     if (targetScreenIndex === -1) return state;
     
-    // Get default styles, content and attributes from our central module
-    const defaultStyles = getDefaultStylesForType(type);
-    const defaultContent = getDefaultContentForType(type);
-    const defaultAttributes = getDefaultAttributesForType(type);
+        // Get default styles and apply theme settings
+        const theme = state.quiz.theme || defaultTheme;
+        const { styles: defaultStyles, themeStyles } = getThemedDefaultStyles(type, theme);
+        const defaultContent = getDefaultContentForType(type);
+        const defaultAttributes = getDefaultAttributesForType(type);
     
     const newElement: QuizElement = {
       id: uuidv4(),
@@ -687,6 +844,7 @@ export const useQuizStore = create<QuizState>()(
       styles: defaultStyles,
       attributes: defaultAttributes,
       sectionId,
+          themeStyles,
     };
     
     // Create a copy of the current screen
@@ -743,6 +901,50 @@ export const useQuizStore = create<QuizState>()(
     
     // Helper function to deep clone an object
     const deepClone = (obj: any) => JSON.parse(JSON.stringify(obj));
+        
+        // If styles are being updated, update themeStyles accordingly
+        const processStyleUpdates = (element: QuizElement, updates: Partial<QuizElement>) => {
+          // If no style updates, return the updates as is
+          if (!updates.styles) return updates;
+          
+          const processedUpdates = { ...updates };
+          const updatedThemeStyles = element.themeStyles ? [...element.themeStyles] : [];
+          
+          // Get current theme for comparison
+          const currentTheme = get().quiz.theme || defaultTheme;
+          
+          // Only remove the specific style properties that are being manually set to different values than theme defaults
+          if (updates.styles && element.themeStyles) {
+            Object.entries(updates.styles).forEach(([styleKey, newValue]) => {
+              // First check if this property is currently themed
+              const isThemed = updatedThemeStyles.includes(styleKey);
+              
+              if (isThemed) {
+                // Get the current theme value for this property based on element type
+                let themeValue = null;
+                if (styleKey === 'backgroundColor' && element.type === 'button') {
+                  themeValue = currentTheme.primaryColor;
+                } else if (styleKey === 'fontFamily' && ['text', 'button', 'link'].includes(element.type)) {
+                  themeValue = currentTheme.fontFamily;
+                }
+                
+                // If the new value is different from the theme value, consider it a manual override
+                if (themeValue !== null && newValue !== themeValue) {
+                  const index = updatedThemeStyles.indexOf(styleKey);
+                  if (index !== -1) {
+                    // Remove only this specific property from theme styles when manually changed
+                    updatedThemeStyles.splice(index, 1);
+                  }
+                }
+              }
+            });
+            
+            // Add themeStyles to the updates
+            processedUpdates.themeStyles = updatedThemeStyles;
+          }
+          
+          return processedUpdates;
+        };
     
     // Recursive function to find and update an element in nested groups
     const updateElementInGroup = (group: QuizElement, targetId: string, updates: Partial<QuizElement>): boolean => {
@@ -751,10 +953,13 @@ export const useQuizStore = create<QuizState>()(
       // Check direct children of this group
       const childIndex = group.children.findIndex((child: QuizElement) => child.id === targetId);
       if (childIndex !== -1) {
+            // Process style updates to track manual changes
+            const processedUpdates = processStyleUpdates(group.children[childIndex], updates);
+            
         // Update the child element
         group.children[childIndex] = {
           ...group.children[childIndex],
-          ...updates,
+              ...processedUpdates,
         };
         return true;
       }
@@ -782,11 +987,14 @@ export const useQuizStore = create<QuizState>()(
         
         // Create a copy of the elements array
         const updatedElements = [...section.elements];
+            
+            // Process style updates to track manual changes
+            const processedUpdates = processStyleUpdates(updatedElements[elementIndex], updates);
         
         // Update the element
         updatedElements[elementIndex] = {
           ...updatedElements[elementIndex],
-          ...updates,
+              ...processedUpdates,
         };
         
         // Update the section with the new elements
@@ -1306,7 +1514,7 @@ export const useQuizStore = create<QuizState>()(
   groupSelectedElements: () => set((state) => {
         const { quiz, selectedElementIds } = state;
     
-        // Need at least 2 elements to form a group
+    // Need at least 2 elements to form a group
         if (selectedElementIds.length < 2) {
           console.log('Need at least 2 elements to form a group');
           return state;
@@ -1315,7 +1523,7 @@ export const useQuizStore = create<QuizState>()(
         console.log('Grouping elements:', selectedElementIds);
     
         // Deep clone the state to avoid mutations
-        const newState = JSON.parse(JSON.stringify(state));
+    const newState = JSON.parse(JSON.stringify(state));
         const currentScreenIndex = quiz.currentScreenIndex;
         const currentScreen = newState.quiz.screens[currentScreenIndex];
         
@@ -1452,7 +1660,7 @@ export const useQuizStore = create<QuizState>()(
             maxCount = count;
             targetSection = section as SectionType;
           }
-        }
+    }
         
         // Determine the best layout for the new group based on the elements being grouped
         // and the parent section's layout
@@ -1536,8 +1744,8 @@ export const useQuizStore = create<QuizState>()(
           // Fall back to default if nothing else works
           return getDefaultGroupLayout();
         };
-        
-        // Create a new group element
+    
+    // Create a new group element
         const newGroupId = uuidv4();
         const newGroup: QuizElement = {
           id: newGroupId,
@@ -1545,7 +1753,7 @@ export const useQuizStore = create<QuizState>()(
           content: `Group (${elementsToGroup.length} items)`,
           styles: getGroupedElementStyles(),
           sectionId: targetSection,
-          isGroup: true,
+      isGroup: true,
           children: elementsToGroup.map(el => ({
             ...el,
             groupId: newGroupId, // Set the groupId of children
@@ -1562,11 +1770,11 @@ export const useQuizStore = create<QuizState>()(
         // Update selected element to be the new group
         newState.selectedElementIds = [newGroupId];
     
-        // Save to history
-        get().saveToHistory(newState.quiz);
+    // Save to history
+    get().saveToHistory(newState.quiz);
     
         console.log(`Created group ${newGroupId} with ${elementsToGroup.length} elements in ${targetSection} section`);
-        return newState;
+    return newState;
   }),
   
       ungroupElements: (groupId: string) => set((state) => {
@@ -1699,11 +1907,25 @@ export const useQuizStore = create<QuizState>()(
             
             // Check if this is the target group
             if (element.id === targetGroupId && element.isGroup) {
+              // Get existing theme styles or initialize empty array
+              const themeStyles = element.themeStyles ? [...element.themeStyles] : [];
+              
+              // Remove any style keys from themeStyles that are being manually updated
+              Object.keys(styles).forEach(styleKey => {
+                const index = themeStyles.indexOf(styleKey);
+                if (index !== -1) {
+                  themeStyles.splice(index, 1);
+                }
+              });
+              
               // Update the styles, preserving existing ones
               element.styles = {
                 ...element.styles,
                 ...styles
               };
+              
+              // Update themeStyles
+              element.themeStyles = themeStyles;
               return true;
             }
             
@@ -1905,16 +2127,276 @@ export const useQuizStore = create<QuizState>()(
         return state;
       }),
       
-      copyScreen: (screenId: string) => set((state) => {
-        // Implementation will go here
-        return state;
-      }),
+      // Theme actions
+      updateTheme: (themeSettings: Partial<ThemeSettings>) => {
+        const { quiz } = get();
+        const theme = { ...(quiz.theme || defaultTheme), ...themeSettings };
+        
+        // Create a new quiz with updated theme
+        const updatedQuiz = {
+          ...quiz,
+          theme
+        };
+        
+        // Also update the theme in the themes array if activeThemeId is present
+        if (quiz.activeThemeId && quiz.themes) {
+          const updatedThemes = quiz.themes.map(t => 
+            t.id === quiz.activeThemeId 
+              ? { ...t, settings: theme } 
+              : t
+          );
+          
+          updatedQuiz.themes = updatedThemes;
+        }
+        
+        // Apply the updated theme to all elements
+        set({ quiz: updatedQuiz });
+        debouncedSaveQuizToStorage(updatedQuiz);
+        
+        // Apply the updated theme to all elements and sections
+        const updatedQuizWithThemedElements = get().applyThemeToAllElements(updatedQuiz);
+        
+        set({ quiz: updatedQuizWithThemedElements });
+        debouncedSaveQuizToStorage(updatedQuizWithThemedElements);
+        get().saveToHistory(updatedQuizWithThemedElements);
+      },
       
-      pasteScreenAfter: (afterScreenId: string) => set((state) => {
-        // Implementation will go here
-      return state;
-      }),
-
+      applyThemeToAllElements: (quizToUpdate = get().quiz) => {
+        const theme = quizToUpdate.theme || defaultTheme;
+        const updatedQuiz = safeClone(quizToUpdate);
+        
+        // Recursive function to update elements in groups
+        const updateElementsRecursively = (elements: QuizElement[]): QuizElement[] => {
+          return elements.map(element => {
+            // Update this element's styles if they're themed and not manually overridden
+            const updatedStyles = { ...element.styles };
+            
+            // Initialize or update themeStyles array
+            const themeStyles = element.themeStyles ? [...element.themeStyles] : [];
+            
+            // Define theme properties to apply based on element type
+            const themeProps: Record<string, { value: string, applyTo: ElementType[] }> = {
+              backgroundColor: { 
+                value: theme.primaryColor, 
+                applyTo: ['button'] 
+              },
+              fontFamily: { 
+                value: theme.fontFamily, 
+                applyTo: ['text', 'button', 'link'] 
+              }
+            };
+            
+            // Apply each theme property if applicable to this element type and not manually overridden
+            Object.entries(themeProps).forEach(([prop, { value, applyTo }]) => {
+              if (applyTo.includes(element.type) && !hasManualStyleOverride(element, prop)) {
+                updatedStyles[prop] = value;
+                
+                // Add to themeStyles if not already there
+                if (!themeStyles.includes(prop)) {
+                  themeStyles.push(prop);
+                }
+              }
+            });
+            
+            // If this is a group, recursively update its children
+            let updatedChildren: QuizElement[] | undefined = undefined;
+            if (element.isGroup && element.children) {
+              updatedChildren = updateElementsRecursively(element.children);
+            }
+            
+            return {
+              ...element,
+              styles: updatedStyles,
+              themeStyles: themeStyles,
+              children: updatedChildren || element.children
+            };
+          });
+        };
+        
+        // Apply theme to all screens
+        updatedQuiz.screens = updatedQuiz.screens.map(screen => {
+          // Update sections in this screen
+          const updatedSections = Object.entries(screen.sections).reduce((acc, [sectionId, section]) => {
+            // Apply theme to section background
+            const updatedSectionStyles = {
+              ...section.styles,
+              backgroundColor: theme.backgroundColor
+            };
+            
+            // Apply theme to elements in this section including nested elements
+            const updatedElements = updateElementsRecursively(section.elements);
+            
+            acc[sectionId as SectionType] = {
+              ...section,
+              styles: updatedSectionStyles,
+              elements: updatedElements
+            };
+            
+            return acc;
+          }, {} as Record<SectionType, QuizSection>);
+          
+          return {
+            ...screen,
+            sections: updatedSections
+          };
+        });
+        
+        return updatedQuiz;
+      },
+      
+      applyThemeToElements: (options = {}) => {
+        const { quiz, selectedElementIds } = get();
+        const theme = quiz.theme || defaultTheme;
+        
+        // Determine which elements to update
+        const elementsToUpdate = options.elementIds || selectedElementIds;
+        if (elementsToUpdate.length === 0) return; // No elements to update
+        
+        // Create a clone of the quiz
+        const updatedQuiz = safeClone(quiz);
+        
+        // Whether to reset all theme-related styles (bypass hasManualStyleOverride checks)
+        const resetAll = options.resetAll || false;
+        
+        // Recursive function to update specific elements in a group
+        const updateSpecificElementsInGroup = (elements: QuizElement[], targetIds: string[]): QuizElement[] => {
+          return elements.map(element => {
+            // Check if this element should be updated
+            const shouldUpdate = targetIds.includes(element.id);
+            
+            // Update this element if needed
+            let updatedStyles = { ...element.styles };
+            let updatedThemeStyles = element.themeStyles ? [...element.themeStyles] : [];
+            
+            if (shouldUpdate) {
+              // Define theme properties to apply based on element type
+              const themeProps: Record<string, { value: string, applyTo: ElementType[] }> = {
+                backgroundColor: { 
+                  value: theme.primaryColor, 
+                  applyTo: ['button'] 
+                },
+                fontFamily: { 
+                  value: theme.fontFamily, 
+                  applyTo: ['text', 'button', 'link'] 
+                }
+              };
+              
+              // Apply each theme property if applicable to this element type
+              // And either bypass the manual override check when resetting all styles OR check for overrides normally
+              Object.entries(themeProps).forEach(([prop, { value, applyTo }]) => {
+                if (applyTo.includes(element.type) && (resetAll || !hasManualStyleOverride(element, prop))) {
+                  updatedStyles[prop] = value;
+                  
+                  // Add to themeStyles if not already there
+                  if (!updatedThemeStyles.includes(prop)) {
+                    updatedThemeStyles.push(prop);
+                  }
+                }
+              });
+            }
+            
+            // If this is a group, recursively check its children
+            let updatedChildren: QuizElement[] | undefined = undefined;
+            if (element.isGroup && element.children) {
+              updatedChildren = updateSpecificElementsInGroup(element.children, targetIds);
+            }
+            
+            return {
+              ...element,
+              styles: updatedStyles,
+              themeStyles: updatedThemeStyles,
+              children: updatedChildren || element.children
+            };
+          });
+        };
+        
+        // Update elements in each screen
+        updatedQuiz.screens = updatedQuiz.screens.map(screen => {
+          // Create a copy of the sections
+          const updatedSections = { ...screen.sections };
+          
+          // Update elements in each section
+          for (const sectionId of Object.keys(updatedSections) as SectionType[]) {
+            const section = updatedSections[sectionId];
+            section.elements = updateSpecificElementsInGroup(section.elements, elementsToUpdate);
+          }
+          
+          return {
+            ...screen,
+            sections: updatedSections
+          };
+        });
+        
+        // Update the quiz state with the updated quiz
+        set({ quiz: updatedQuiz });
+        
+        // Save to history
+        get().saveToHistory(updatedQuiz);
+      },
+      
+      applyThemeToSections: (options = {}) => {
+        const { quiz } = get();
+        const theme = quiz.theme || defaultTheme;
+        
+        // Determine which sections to update
+        const sectionsToUpdate = options.sectionIds || ['header', 'body', 'footer'] as SectionType[];
+        if (sectionsToUpdate.length === 0) return; // No sections to update
+        
+        // Create a clone of the quiz
+        const updatedQuiz = safeClone(quiz);
+        
+        // Apply to all screens for consistency
+        updatedQuiz.screens = updatedQuiz.screens.map(screen => {
+          // Update each specified section
+          sectionsToUpdate.forEach(sectionId => {
+            if (screen.sections[sectionId]) {
+              screen.sections[sectionId] = {
+                ...screen.sections[sectionId],
+                styles: {
+                  ...screen.sections[sectionId].styles,
+                  backgroundColor: theme.backgroundColor
+                }
+              };
+            }
+          });
+          
+          return screen;
+        });
+        
+        set({ quiz: updatedQuiz });
+        debouncedSaveQuizToStorage(updatedQuiz);
+        get().saveToHistory(updatedQuiz);
+      },
+      
+      switchTheme: (themeId: string) => {
+        const { quiz } = get();
+        
+        // Don't switch if there are no themes
+        if (!quiz.themes) return;
+        
+        // Find the theme
+        const targetTheme = quiz.themes.find(theme => theme.id === themeId);
+        if (!targetTheme) return;
+        
+        // Update the quiz with the new active theme
+        const updatedQuiz = {
+          ...quiz,
+          activeThemeId: themeId,
+          theme: { ...targetTheme.settings }
+        };
+        
+        // Apply the theme to all elements
+        set({ quiz: updatedQuiz });
+        debouncedSaveQuizToStorage(updatedQuiz);
+        
+        // Apply the updated theme to all elements and sections
+        const updatedQuizWithThemedElements = get().applyThemeToAllElements(updatedQuiz);
+        
+        set({ quiz: updatedQuizWithThemedElements });
+        debouncedSaveQuizToStorage(updatedQuizWithThemedElements);
+        get().saveToHistory(updatedQuizWithThemedElements);
+      },
+      
       // View actions
       setViewMode: (mode: ViewMode) => set((state) => {
         console.log('Setting view mode in store:', mode);
@@ -1929,11 +2411,64 @@ export const useQuizStore = create<QuizState>()(
           html,
           css,
         }
-      }))
+      })),
+
+      renameScreen: (screenId: string, newName: string) => set((state) => {
+        const screenIndex = state.quiz.screens.findIndex(screen => screen.id === screenId);
+        if (screenIndex === -1) return state;
+        
+        const updatedScreens = [...state.quiz.screens];
+        updatedScreens[screenIndex] = {
+          ...updatedScreens[screenIndex],
+          name: newName
+        };
+        
+        const updatedQuiz = {
+          ...state.quiz,
+          screens: updatedScreens
+        };
+        
+        get().saveToHistory(updatedQuiz);
+        
+        return {
+          quiz: updatedQuiz
+        };
+      }),
+
+      duplicateScreen: (screenId: string) => set((state) => {
+        const screenIndex = state.quiz.screens.findIndex(screen => screen.id === screenId);
+        if (screenIndex === -1) return state;
+        
+        // Deep clone the screen to duplicate
+        const screenToDuplicate = JSON.parse(JSON.stringify(state.quiz.screens[screenIndex]));
+        
+        // Create a new screen with a new ID
+        const duplicatedScreen: QuizScreen = {
+          ...screenToDuplicate,
+          id: uuidv4(),
+          name: `${screenToDuplicate.name} (Copy)`
+        };
+        
+        // Insert the duplicated screen right after the original screen
+        const updatedScreens = [...state.quiz.screens];
+        updatedScreens.splice(screenIndex + 1, 0, duplicatedScreen);
+        
+        const updatedQuiz = {
+          ...state.quiz,
+          screens: updatedScreens,
+          currentScreenIndex: screenIndex + 1 // Set the duplicated screen as the current screen
+        };
+        
+        get().saveToHistory(updatedQuiz);
+        
+        return {
+          quiz: updatedQuiz
+        };
+      }),
     }),
     {
-      name: 'quiz-builder-storage',
-      storage: createJSONStorage(() => localStorage),
+      name: 'quiz-builder-store',
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
         quizList: state.quizList,
         quiz: state.quiz,
@@ -1948,20 +2483,23 @@ export const useQuizStore = create<QuizState>()(
             if (freshQuizData) {
               console.log(`Loaded fresh quiz data for ${freshQuizData.id}`);
               
+              // Migrate theme data if needed
+              const migratedQuiz = migrateThemeData(freshQuizData);
+              
               // Important: Update the state after hydration
               setTimeout(() => {
                 useQuizStore.setState({
-                  quiz: freshQuizData,
-                  history: [safeClone(freshQuizData)],
+                  quiz: migratedQuiz,
+                  history: [safeClone(migratedQuiz)],
                   historyIndex: 0,
                   futureSaves: [],
                   selectedElementIds: [],
                   selectedSectionId: null
                 });
               }, 0);
-        }
-      }
-    } else {
+            }
+          }
+        } else {
           console.log('Hydration failed - could not load state from storage');
           
           // Try to initialize with quiz list
@@ -1978,17 +2516,20 @@ export const useQuizStore = create<QuizState>()(
               const quizData = loadQuizFromStorage(mostRecentQuizId);
               
               if (quizData) {
+                // Migrate theme data if needed
+                const migratedQuiz = migrateThemeData(quizData);
+                
                 setTimeout(() => {
                   useQuizStore.setState({
-                    quiz: quizData,
+                    quiz: migratedQuiz,
                     quizList: storedQuizList,
-                    history: [safeClone(quizData)],
+                    history: [safeClone(migratedQuiz)],
                     historyIndex: 0,
                     futureSaves: [],
                     selectedElementIds: [],
                     selectedSectionId: null
                   });
-                  console.log(`Loaded most recent quiz: ${quizData.id}`);
+                  console.log(`Loaded most recent quiz: ${migratedQuiz.id}`);
                 }, 0);
               }
             }
@@ -2000,6 +2541,8 @@ export const useQuizStore = create<QuizState>()(
     }
   )
 );
+
+export default useQuizStore;
 
 // Add client-side initialization to ensure the store has the latest data
 if (typeof window !== 'undefined') {
@@ -2019,14 +2562,18 @@ if (typeof window !== 'undefined') {
         const freshQuizData = loadQuizFromStorage(currentQuizId);
         if (freshQuizData) {
           console.log(`Client-side init: Loaded fresh quiz data for ${freshQuizData.id}`);
+          
+          // Migrate theme data if needed
+          const migratedQuiz = migrateThemeData(freshQuizData);
+          
           useQuizStore.setState({
-            quiz: freshQuizData,
+            quiz: migratedQuiz,
             quizList: quizList,
-            history: [safeClone(freshQuizData)],
+            history: [safeClone(migratedQuiz)],
             historyIndex: 0,
             futureSaves: [],
           });
-          } else {
+        } else {
           // If current quiz not found, try to load the most recent quiz
           const sortedList = [...quizList].sort((a, b) => 
             new Date(b.lastEdited).getTime() - new Date(a.lastEdited).getTime()
@@ -2038,21 +2585,51 @@ if (typeof window !== 'undefined') {
             
             if (quizData) {
               console.log(`Client-side init: Loaded most recent quiz: ${quizData.id}`);
+              
+              // Migrate theme data if needed
+              const migratedQuiz = migrateThemeData(quizData);
+              
               useQuizStore.setState({
-                quiz: quizData,
+                quiz: migratedQuiz,
                 quizList: quizList,
-                history: [safeClone(quizData)],
+                history: [safeClone(migratedQuiz)],
                 historyIndex: 0,
                 futureSaves: [],
               });
             }
+          }
         }
-      }
-    } else {
+      } else {
         console.log('No stored quizzes found, using default quiz');
       }
     } catch (error) {
       console.error('Client-side initialization error:', error);
     }
   }, 100); // Slight delay to ensure hydration completes first
+}
+
+// Migration utility to ensure backward compatibility with the new theme system
+function migrateThemeData(quiz: Quiz): Quiz {
+  // Check if quiz already has the new theme structure
+  if (quiz.themes && quiz.activeThemeId) {
+    return quiz; // Already migrated
+  }
+  
+  // Create a deep clone of the quiz
+  const updatedQuiz = safeClone(quiz);
+  
+  // Get current theme or use default
+  const currentTheme = updatedQuiz.theme || { ...defaultTheme };
+  
+  // Add the predefined themes
+  updatedQuiz.themes = [...predefinedThemes];
+  
+  // Set the active theme to the first theme
+  updatedQuiz.activeThemeId = 'theme1';
+  
+  // Keep the current theme for backward compatibility
+  updatedQuiz.theme = currentTheme;
+  
+  console.log('Migrated quiz to new theme structure', updatedQuiz.id);
+  return updatedQuiz;
 } 

@@ -542,21 +542,21 @@ export function PropertiesPanel() {
                 <SelectValue placeholder="Select font family" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Arial, sans-serif">Arial</SelectItem>
-                <SelectItem value="Helvetica, sans-serif">Helvetica</SelectItem>
-                <SelectItem value="Verdana, sans-serif">Verdana</SelectItem>
-                <SelectItem value="Tahoma, sans-serif">Tahoma</SelectItem>
-                <SelectItem value="'Trebuchet MS', sans-serif">Trebuchet MS</SelectItem>
-                <SelectItem value="Georgia, serif">Georgia</SelectItem>
-                <SelectItem value="'Times New Roman', serif">Times New Roman</SelectItem>
-                <SelectItem value="'Courier New', monospace">Courier New</SelectItem>
-                <SelectItem value="'Roboto', sans-serif">Roboto</SelectItem>
-                <SelectItem value="'Open Sans', sans-serif">Open Sans</SelectItem>
-                <SelectItem value="'Lato', sans-serif">Lato</SelectItem>
-                <SelectItem value="'Montserrat', sans-serif">Montserrat</SelectItem>
-                <SelectItem value="'Source Sans Pro', sans-serif">Source Sans Pro</SelectItem>
-                <SelectItem value="'Raleway', sans-serif">Raleway</SelectItem>
-                <SelectItem value="'Poppins', sans-serif">Poppins</SelectItem>
+                <SelectItem value="Arial, sans-serif" style={{ fontFamily: "Arial, sans-serif" }}>Arial</SelectItem>
+                <SelectItem value="Helvetica, sans-serif" style={{ fontFamily: "Helvetica, sans-serif" }}>Helvetica</SelectItem>
+                <SelectItem value="Verdana, sans-serif" style={{ fontFamily: "Verdana, sans-serif" }}>Verdana</SelectItem>
+                <SelectItem value="Tahoma, sans-serif" style={{ fontFamily: "Tahoma, sans-serif" }}>Tahoma</SelectItem>
+                <SelectItem value="'Trebuchet MS', sans-serif" style={{ fontFamily: "'Trebuchet MS', sans-serif" }}>Trebuchet MS</SelectItem>
+                <SelectItem value="Georgia, serif" style={{ fontFamily: "Georgia, serif" }}>Georgia</SelectItem>
+                <SelectItem value="'Times New Roman', serif" style={{ fontFamily: "'Times New Roman', serif" }}>Times New Roman</SelectItem>
+                <SelectItem value="'Courier New', monospace" style={{ fontFamily: "'Courier New', monospace" }}>Courier New</SelectItem>
+                <SelectItem value="'Roboto', sans-serif" style={{ fontFamily: "'Roboto', sans-serif" }}>Roboto</SelectItem>
+                <SelectItem value="'Open Sans', sans-serif" style={{ fontFamily: "'Open Sans', sans-serif" }}>Open Sans</SelectItem>
+                <SelectItem value="'Lato', sans-serif" style={{ fontFamily: "'Lato', sans-serif" }}>Lato</SelectItem>
+                <SelectItem value="'Montserrat', sans-serif" style={{ fontFamily: "'Montserrat', sans-serif" }}>Montserrat</SelectItem>
+                <SelectItem value="'Source Sans Pro', sans-serif" style={{ fontFamily: "'Source Sans Pro', sans-serif" }}>Source Sans Pro</SelectItem>
+                <SelectItem value="'Raleway', sans-serif" style={{ fontFamily: "'Raleway', sans-serif" }}>Raleway</SelectItem>
+                <SelectItem value="'Poppins', sans-serif" style={{ fontFamily: "'Poppins', sans-serif" }}>Poppins</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -2,7 +2,7 @@
 
 import React, { useState, createContext, useContext } from 'react';
 import { Header } from './Header';
-import { LeftSidebar } from './LeftSidebar';
+import { NestedLeftSidebar } from './NestedLeftSidebar';
 import { MainContent } from './MainContent';
 import { RightSidebar } from './RightSidebar';
 import { DndProvider } from '@/components/quiz-builder/DndProvider';
@@ -13,23 +13,38 @@ import { ResizablePanel } from '@/components/ui/resizable-panel';
 export interface PanelSizesContext {
   leftPanelSize: number;
   rightPanelSize: number;
+  onLeftPanelCollapsedChange: (collapsed: boolean) => void;
+  isPanelCollapsed: boolean;
 }
 
 export const PanelSizesContext = createContext<PanelSizesContext>({
-  leftPanelSize: 260,
-  rightPanelSize: 320
+  leftPanelSize: 352,
+  rightPanelSize: 320,
+  onLeftPanelCollapsedChange: () => {},
+  isPanelCollapsed: false
 });
 
 export const usePanelSizes = () => useContext(PanelSizesContext);
 
 export function Layout({ children }: { children?: React.ReactNode }) {
-  const [leftPanelSize, setLeftPanelSize] = useState(260);
+  const [leftPanelSize, setLeftPanelSize] = useState(352);
   const [rightPanelSize, setRightPanelSize] = useState(320);
+  const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+  
+  // Function to be called from NestedLeftSidebar
+  const onLeftPanelCollapsedChange = (collapsed: boolean) => {
+    setIsPanelCollapsed(collapsed);
+  };
   
   return (
     <DndProvider>
       <DisableFocus />
-      <PanelSizesContext.Provider value={{ leftPanelSize, rightPanelSize }}>
+      <PanelSizesContext.Provider value={{ 
+        leftPanelSize, 
+        rightPanelSize,
+        onLeftPanelCollapsedChange,
+        isPanelCollapsed
+      }}>
         <div className="flex flex-col h-screen">
           <Header />
           <div className="flex-1 overflow-hidden relative">
@@ -42,13 +57,14 @@ export function Layout({ children }: { children?: React.ReactNode }) {
             <div className="absolute top-4 left-4 bottom-4 z-30">
               <ResizablePanel 
                 side="left" 
-                defaultSize={260}
+                defaultSize={leftPanelSize}
                 minSize={200}
                 maxSize={400}
                 onResize={setLeftPanelSize}
+                isCollapsed={isPanelCollapsed}
                 className="bg-background rounded-lg shadow-xl border border-border overflow-hidden flex flex-col h-full"
               >
-                <LeftSidebar />
+                <NestedLeftSidebar />
               </ResizablePanel>
             </div>
             

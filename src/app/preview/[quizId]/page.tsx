@@ -311,6 +311,10 @@ export default function PreviewPage({ params }: PreviewPageProps) {
         
         .quiz-section-body {
           flex: 1;
+          overflow: auto;
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
         }
         
         .quiz-section-footer {

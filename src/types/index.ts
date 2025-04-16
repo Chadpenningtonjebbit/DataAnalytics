@@ -44,6 +44,7 @@ export type QuizElement = {
     x: number;
     y: number;
   };
+  themeStyles?: string[]; // Track which styles come from theme
 };
 
 // Simplified to only use flexbox
@@ -81,10 +82,27 @@ export type QuizScreen = {
   };
 };
 
+// Theme type to support multiple themes
+export type ThemeItem = {
+  id: string;
+  name: string;
+  settings: ThemeSettings;
+};
+
 export type Quiz = {
   id: string;
   name: string;
   screens: QuizScreen[];
   currentScreenIndex: number;
   lastEdited?: string; // ISO string for when the quiz was last edited
+  theme?: ThemeSettings; // Currently active theme settings
+  themes?: ThemeItem[]; // List of saved themes
+  activeThemeId?: string; // ID of the active theme
+};
+
+// Theme settings that can be applied globally
+export type ThemeSettings = {
+  primaryColor: string; // Used for buttons, active elements, etc.
+  fontFamily: string; // Default font for all text elements
+  backgroundColor: string; // Default background for sections
 }; 

@@ -354,6 +354,10 @@ export function generateScreenCss(screen: QuizScreen): string {
       // Add specific properties based on section type
       if (sectionId === 'body') {
         css += `  flex: 1;\n`;
+        css += `  overflow: auto;\n`;  // Make body section scrollable
+        css += `  display: flex;\n`;
+        css += `  flex-direction: column;\n`;
+        css += `  min-height: 0;\n`;  // Needed for proper flex container sizing with overflow
       }
       
       css += '}\n\n';

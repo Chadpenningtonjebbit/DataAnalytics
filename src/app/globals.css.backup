@@ -626,9 +626,3 @@ div[data-dnd-kit-draggable] {
 .quiz-element.group.selected .group-children-container > .quiz-element::after {
   border-color: transparent;
 }
-
-/* Special handling for body section hover/selection state with scroll */
-.quiz-section[data-section-id="body"] {
-  position: relative !important;
-}
-

@@ -12,6 +12,7 @@ interface ResizablePanelProps {
   side: 'left' | 'right';
   className?: string;
   onResize?: (newSize: number) => void;
+  isCollapsed?: boolean;
 }
 
 export function ResizablePanel({
@@ -21,9 +22,11 @@ export function ResizablePanel({
   maxSize = 500,
   side,
   className,
-  onResize
+  onResize,
+  isCollapsed = false
 }: ResizablePanelProps) {
   const [size, setSize] = useState(defaultSize);
+  const [prevSize, setPrevSize] = useState(defaultSize); // Store previous size for when uncollapsing
   const panelRef = useRef<HTMLDivElement>(null);
   
   // Store the size in localStorage
@@ -36,16 +39,33 @@ export function ResizablePanel({
       const parsedSize = parseInt(savedSize);
       if (!isNaN(parsedSize) && parsedSize >= minSize && parsedSize <= maxSize) {
         setSize(parsedSize);
+        setPrevSize(parsedSize);
       }
     }
   }, [storageKey, minSize, maxSize]);
   
-  // Save size when it changes
+  // Save size when it changes (but not when collapsed)
   useEffect(() => {
-    localStorage.setItem(storageKey, size.toString());
-  }, [size, storageKey]);
+    if (!isCollapsed) {
+      localStorage.setItem(storageKey, size.toString());
+    }
+  }, [size, storageKey, isCollapsed]);
+  
+  // Handle collapse state changes
+  useEffect(() => {
+    if (isCollapsed) {
+      // Store current size before collapsing
+      setPrevSize(size);
+    } else {
+      // Restore previous size when uncollapsing
+      setSize(prevSize);
+    }
+  }, [isCollapsed]);
   
   const handleResize = (delta: number) => {
+    // Don't allow resize when collapsed
+    if (isCollapsed) return;
+    
     const newSize = side === 'left' 
       ? size + delta 
       : size - delta;
@@ -58,6 +78,9 @@ export function ResizablePanel({
     }
   };
   
+  // Calculate actual width based on collapsed state
+  const actualWidth = isCollapsed ? 52 : size;
+  
   return (
     <div 
       ref={panelRef}
@@ -65,22 +88,24 @@ export function ResizablePanel({
         'h-full flex-shrink-0 relative',
         className
       )}
-      style={{ width: `${size}px` }}
+      style={{ width: `${actualWidth}px` }}
     >
       {children}
-      <div className={cn(
-        'absolute top-0 bottom-0 h-full z-10',
-        side === 'left' ? 'right-0' : 'left-0'
-      )}>
-        <ResizeHandle 
-          direction="horizontal" 
-          onResize={handleResize}
-          className={cn(
-            'h-full',
-            side === 'left' ? '-right-1' : '-left-1'
-          )}
-        />
-      </div>
+      {!isCollapsed && (
+        <div className={cn(
+          'absolute top-0 bottom-0 h-full z-10',
+          side === 'left' ? 'right-0' : 'left-0'
+        )}>
+          <ResizeHandle 
+            direction="horizontal" 
+            onResize={handleResize}
+            className={cn(
+              'h-full',
+              side === 'left' ? '-right-1' : '-left-1'
+            )}
+          />
+        </div>
+      )}
     </div>
   );
 } 

@@ -44,7 +44,7 @@ export function MainContent() {
   } = useQuizStore();
   
   const { theme } = useTheme();
-  // Get panel sizes from context
+  // Get panel sizes from context and handle TypeScript error with safer property access
   const panelSizes = usePanelSizes();
   const leftPanelSize = panelSizes.leftPanelSize;
   const rightPanelSize = panelSizes.rightPanelSize;

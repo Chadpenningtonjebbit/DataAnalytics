@@ -13,7 +13,7 @@ import {
   ContextMenuSeparator,
   ContextMenuShortcut,
 } from "@/components/ui/context-menu";
-import { Trash, Copy, Clipboard, Type, Square, Link as LinkIcon, Image, CheckSquare, Radio, ListFilter, AlignLeft, Group, Ungroup, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Trash, Copy, Clipboard, Type, Square, Link as LinkIcon, Image, CheckSquare, Radio, ListFilter, AlignLeft, Group, Ungroup, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, RefreshCw } from 'lucide-react';
 
 interface ElementRendererProps {
   element: QuizElement;
@@ -31,7 +31,8 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     groupSelectedElements,
     ungroupElements,
     reorderElement,
-    quiz
+    quiz,
+    applyThemeToElements
   } = useQuizStore();
   
   // Track hover state
@@ -198,6 +199,16 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     } else {
       // Delete just this element
       removeElement(element.id);
+    }
+  };
+  
+  const handleResetToTheme = () => {
+    // If multiple elements are selected, apply theme defaults to all of them
+    if (selectedElementIds.length > 1) {
+      applyThemeToElements({ elementIds: selectedElementIds, resetAll: true });
+    } else {
+      // Apply theme defaults to just this element
+      applyThemeToElements({ elementIds: [element.id], resetAll: true });
     }
   };
   
@@ -722,6 +733,13 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
               <ContextMenuShortcut>⌘G</ContextMenuShortcut>
             </ContextMenuItem>
           )}
+          
+          <ContextMenuSeparator />
+          
+          <ContextMenuItem onClick={handleResetToTheme} className="cursor-pointer">
+            <RefreshCw className="mr-2 h-4 w-4" />
+            Reset style
+          </ContextMenuItem>
           
           <ContextMenuSeparator />
           
