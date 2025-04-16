@@ -105,4 +105,5 @@ export type ThemeSettings = {
   primaryColor: string; // Used for buttons, active elements, etc.
   fontFamily: string; // Default font for all text elements
   backgroundColor: string; // Default background for sections
+  cornerRadius: string; // Default border radius for elements
 }; 

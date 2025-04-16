@@ -25,7 +25,8 @@ const safeClone = <T>(obj: T): T => {
 const defaultTheme: ThemeSettings = {
   primaryColor: '#000000', // Black
   fontFamily: 'Arial, sans-serif',
-  backgroundColor: '#ffffff' // White
+  backgroundColor: '#ffffff', // White
+  cornerRadius: '4px' // Default corner radius
 };
 
 // Predefined themes
@@ -36,7 +37,8 @@ const predefinedThemes: ThemeItem[] = [
     settings: {
       primaryColor: '#000000', // Black
       fontFamily: 'Arial, sans-serif',
-      backgroundColor: '#ffffff' // White
+      backgroundColor: '#ffffff', // White
+      cornerRadius: '4px' // Default corner radius
     }
   },
   {
@@ -45,7 +47,8 @@ const predefinedThemes: ThemeItem[] = [
     settings: {
       primaryColor: '#0ea5e9', // Sky blue
       fontFamily: 'Helvetica, sans-serif',
-      backgroundColor: '#f0f9ff' // Light blue bg
+      backgroundColor: '#f0f9ff', // Light blue bg
+      cornerRadius: '8px' // More rounded corners
     }
   },
   {
@@ -54,7 +57,8 @@ const predefinedThemes: ThemeItem[] = [
     settings: {
       primaryColor: '#10b981', // Emerald green
       fontFamily: "'Montserrat', sans-serif",
-      backgroundColor: '#ecfdf5' // Light green bg
+      backgroundColor: '#ecfdf5', // Light green bg
+      cornerRadius: '12px' // Even more rounded corners
     }
   },
   {
@@ -63,7 +67,8 @@ const predefinedThemes: ThemeItem[] = [
     settings: {
       primaryColor: '#8b5cf6', // Purple
       fontFamily: "'Poppins', sans-serif",
-      backgroundColor: '#f5f3ff' // Light purple bg
+      backgroundColor: '#f5f3ff', // Light purple bg
+      cornerRadius: '6px' // Medium rounded corners
     }
   },
   {
@@ -72,7 +77,8 @@ const predefinedThemes: ThemeItem[] = [
     settings: {
       primaryColor: '#ef4444', // Red
       fontFamily: "'Roboto', sans-serif",
-      backgroundColor: '#fef2f2' // Light red bg
+      backgroundColor: '#fef2f2', // Light red bg
+      cornerRadius: '0px' // No rounded corners
     }
   }
 ];
@@ -427,12 +433,22 @@ const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): {
   if (type === 'button') {
     defaultStyles.backgroundColor = theme.primaryColor;
     themeStyles.push('backgroundColor');
+    
+    // Apply corner radius to buttons
+    defaultStyles.borderRadius = theme.cornerRadius;
+    themeStyles.push('borderRadius');
   }
   
   // Apply font family to text elements
   if (['text', 'button', 'link'].includes(type)) {
     defaultStyles.fontFamily = theme.fontFamily;
     themeStyles.push('fontFamily');
+  }
+  
+  // Apply corner radius to images
+  if (type === 'image') {
+    defaultStyles.borderRadius = theme.cornerRadius;
+    themeStyles.push('borderRadius');
   }
   
   return { styles: defaultStyles, themeStyles };
@@ -2183,6 +2199,10 @@ export const useQuizStore = create<QuizState>()(
               fontFamily: { 
                 value: theme.fontFamily, 
                 applyTo: ['text', 'button', 'link'] 
+              },
+              borderRadius: {
+                value: theme.cornerRadius,
+                applyTo: ['button', 'image']
               }
             };
             
@@ -2278,6 +2298,10 @@ export const useQuizStore = create<QuizState>()(
                 fontFamily: { 
                   value: theme.fontFamily, 
                   applyTo: ['text', 'button', 'link'] 
+                },
+                borderRadius: {
+                  value: theme.cornerRadius,
+                  applyTo: ['button', 'image']
                 }
               };
               

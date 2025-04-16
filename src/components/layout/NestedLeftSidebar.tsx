@@ -379,6 +379,14 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     }
   };
   
+  // Handle corner radius change
+  const handleCornerRadiusChange = (value: string) => {
+    const state = useQuizStore.getState() as any;
+    if (state.updateTheme) {
+      state.updateTheme({ cornerRadius: value });
+    }
+  };
+  
   // Handle theme selection change
   const handleThemeChange = (themeId: string) => {
     const state = useQuizStore.getState() as any;
@@ -393,7 +401,8 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   const theme = quizWithTheme.theme || {
     primaryColor: '#000000',
     fontFamily: 'Arial, sans-serif',
-    backgroundColor: '#ffffff'
+    backgroundColor: '#ffffff',
+    cornerRadius: '4px'
   };
   
   // Get available themes
@@ -418,7 +427,19 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     { value: "'Raleway', sans-serif", label: 'Raleway' },
     { value: "'Poppins', sans-serif", label: 'Poppins' }
   ];
-
+  
+  // Corner radius presets
+  const cornerRadiusOptions = [
+    { value: '0px', label: 'None' },
+    { value: '2px', label: 'Extra Small' },
+    { value: '4px', label: 'Small' },
+    { value: '8px', label: 'Medium' },
+    { value: '12px', label: 'Large' },
+    { value: '16px', label: 'Extra Large' },
+    { value: '24px', label: 'Rounded' },
+    { value: '9999px', label: 'Pill' }
+  ];
+  
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <PanelHeader 
@@ -476,6 +497,28 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
                       style={{ fontFamily: font.value }}
                     >
                       {font.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Corner Radius Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="corner-radius" className="text-sm font-medium">
+                Corner Radius
+              </Label>
+              <Select onValueChange={handleCornerRadiusChange} value={theme.cornerRadius}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select corner radius" />
+                </SelectTrigger>
+                <SelectContent>
+                  {cornerRadiusOptions.map(option => (
+                    <SelectItem 
+                      key={option.value} 
+                      value={option.value}
+                    >
+                      {option.label} ({option.value})
                     </SelectItem>
                   ))}
                 </SelectContent>
