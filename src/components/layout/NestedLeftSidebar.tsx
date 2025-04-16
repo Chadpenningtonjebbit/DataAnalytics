@@ -355,11 +355,12 @@ function ContentPanel({
 
 // Theme panel component
 function ThemePanel({ onClose }: { onClose: () => void }) {
-  const { 
-    quiz, 
-    updateTheme,
-    switchTheme
-  } = useQuizStore();
+  const quizStore = useQuizStore();
+  const quiz = quizStore.quiz;
+  
+  // Access updateTheme and switchTheme functions with proper type casting if needed
+  const updateTheme = quizStore.updateTheme as (themeSettings: any) => void;
+  const switchTheme = quizStore.switchTheme as (themeId: string) => void;
   
   // Get theme settings or use defaults
   const theme = quiz.theme || {
