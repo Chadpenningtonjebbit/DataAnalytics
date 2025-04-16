@@ -14,7 +14,7 @@ import { useQuizStore } from '@/store/useQuizStore';
 import { ElementRenderer } from '@/components/quiz-builder/ElementRenderer';
 import { SectionType } from '@/types';
 import { useTheme } from '@/components/ThemeProvider';
-import { usePanelSizes } from './Layout';
+import { usePanelSizes } from '@/components/layout/Layout';
 import { ScreenThumbnail } from '@/components/quiz-builder/ScreenThumbnail';
 
 export function MainContent() {
