@@ -33,7 +33,7 @@ import {
   Trash
 } from 'lucide-react';
 import { DraggableElement } from '@/components/quiz-builder/DraggableElement';
-import { ElementType, SectionType } from '@/types';
+import { ElementType, SectionType, ThemeItem } from '@/types';
 import { useQuizStore } from '@/store/useQuizStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
@@ -440,7 +440,7 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
                 <SelectValue placeholder="Select a theme" />
               </SelectTrigger>
               <SelectContent>
-                {themes.map(t => (
+                {themes.map((t: ThemeItem) => (
                   <SelectItem key={t.id} value={t.id}>
                     {t.name}
                   </SelectItem>
