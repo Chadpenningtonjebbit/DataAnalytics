@@ -93,7 +93,14 @@ export function NestedLeftSidebar() {
   const { quiz, toggleSection } = useQuizStore();
   const currentScreen = quiz.screens[quiz.currentScreenIndex];
   const [searchQuery, setSearchQuery] = useState('');
-  const { onLeftPanelCollapsedChange } = usePanelSizes();
+  const panelSizes = usePanelSizes();
+  
+  // Safe way to call the context function if it exists
+  const handlePanelCollapsedChange = (collapsed: boolean) => {
+    if ('onLeftPanelCollapsedChange' in panelSizes) {
+      panelSizes.onLeftPanelCollapsedChange(collapsed);
+    }
+  };
   
   // Filter elements based on search query
   const filteredElements = searchQuery.trim() === '' 
@@ -111,7 +118,7 @@ export function NestedLeftSidebar() {
       setIsPanelExpanded(newExpandedState);
       
       // Tell the parent container about collapsed state
-      onLeftPanelCollapsedChange(!newExpandedState);
+      handlePanelCollapsedChange(!newExpandedState);
       
       // If we're collapsing, visually deselect the panel
       if (isPanelExpanded) {
@@ -122,7 +129,7 @@ export function NestedLeftSidebar() {
       setActivePanel(panelId);
       setIsPanelExpanded(true);
       // Tell parent we're expanded
-      onLeftPanelCollapsedChange(false);
+      handlePanelCollapsedChange(false);
     }
   };
   
@@ -130,7 +137,7 @@ export function NestedLeftSidebar() {
   const handlePanelClose = () => {
     setIsPanelExpanded(false);
     // Tell parent we're collapsed
-    onLeftPanelCollapsedChange(true);
+    handlePanelCollapsedChange(true);
     // When closing, visually deselect the panel button too
     setActivePanel(null);
   };
