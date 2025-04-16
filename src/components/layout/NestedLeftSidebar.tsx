@@ -56,6 +56,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Slider } from "@/components/ui/slider";
+import { NumericInput } from "@/components/ui/numeric-input";
 
 const elementCategories = [
   {
@@ -428,18 +430,6 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     { value: "'Poppins', sans-serif", label: 'Poppins' }
   ];
   
-  // Corner radius presets
-  const cornerRadiusOptions = [
-    { value: '0px', label: 'None' },
-    { value: '2px', label: 'Extra Small' },
-    { value: '4px', label: 'Small' },
-    { value: '8px', label: 'Medium' },
-    { value: '12px', label: 'Large' },
-    { value: '16px', label: 'Extra Large' },
-    { value: '24px', label: 'Rounded' },
-    { value: '9999px', label: 'Pill' }
-  ];
-  
   return (
     <div className="h-full flex flex-col overflow-hidden">
       <PanelHeader 
@@ -508,21 +498,25 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
               <Label htmlFor="corner-radius" className="text-sm font-medium">
                 Corner Radius
               </Label>
-              <Select onValueChange={handleCornerRadiusChange} value={theme.cornerRadius}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select corner radius" />
-                </SelectTrigger>
-                <SelectContent>
-                  {cornerRadiusOptions.map(option => (
-                    <SelectItem 
-                      key={option.value} 
-                      value={option.value}
-                    >
-                      {option.label} ({option.value})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-2">
+                <Slider 
+                  value={[parseInt(theme.cornerRadius?.replace(/px|%/g, '') || '0')]} 
+                  min={0}
+                  max={32} 
+                  step={2} 
+                  className="flex-1"
+                  onValueChange={(value: number[]) => {
+                    // Get current unit from the cornerRadius value or default to px
+                    const unit = theme.cornerRadius?.includes('%') ? '%' : 'px';
+                    handleCornerRadiusChange(`${value[0]}${unit}`);
+                  }}
+                />
+                <NumericInput 
+                  className="w-24" 
+                  value={theme.cornerRadius || '0px'} 
+                  onChange={handleCornerRadiusChange} 
+                />
+              </div>
             </div>
             
             {/* Background Color Picker */}

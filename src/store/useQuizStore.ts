@@ -415,6 +415,10 @@ const hasManualStyleOverride = (element: QuizElement, styleKey: string): boolean
     if (styleKey === 'fontFamily' && ['text', 'button', 'link'].includes(element.type)) {
       return currentValue !== defaultTheme.fontFamily;
     }
+    
+    if (styleKey === 'borderRadius' && ['button', 'image'].includes(element.type)) {
+      return currentValue !== defaultTheme.cornerRadius;
+    }
   }
   
   // Style not present or not an override
