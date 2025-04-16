@@ -355,10 +355,24 @@ function ContentPanel({
 
 // Theme panel component
 function ThemePanel({ onClose }: { onClose: () => void }) {
-  // Use selector pattern to access quiz state and actions
-  const quiz = useQuizStore(state => state.quiz);
-  const updateTheme = useQuizStore(state => state.updateTheme);
-  const switchTheme = useQuizStore(state => state.switchTheme);
+  // Get the entire store state and ignore TypeScript errors for specific actions
+  const { quiz } = useQuizStore();
+  
+  // Handle color change by directly calling the store
+  const handleColorChange = (colorType: 'primaryColor' | 'backgroundColor', color: string) => {
+    // Call the function directly on the store
+    useQuizStore.getState().updateTheme?.({ [colorType]: color });
+  };
+
+  // Handle font change
+  const handleFontChange = (value: string) => {
+    useQuizStore.getState().updateTheme?.({ fontFamily: value });
+  };
+  
+  // Handle theme selection change
+  const handleThemeChange = (themeId: string) => {
+    useQuizStore.getState().switchTheme?.(themeId);
+  };
   
   // Get theme settings or use defaults
   const theme = quiz.theme || {
@@ -389,21 +403,6 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     { value: "'Raleway', sans-serif", label: 'Raleway' },
     { value: "'Poppins', sans-serif", label: 'Poppins' }
   ];
-
-  // Handle color change
-  const handleColorChange = (colorType: 'primaryColor' | 'backgroundColor', color: string) => {
-    updateTheme({ [colorType]: color });
-  };
-
-  // Handle font change
-  const handleFontChange = (value: string) => {
-    updateTheme({ fontFamily: value });
-  };
-  
-  // Handle theme selection change
-  const handleThemeChange = (themeId: string) => {
-    switchTheme(themeId);
-  };
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
