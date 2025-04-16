@@ -388,15 +388,17 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   };
   
   // Get theme settings or use defaults
-  const theme = quiz.theme || {
+  // Use type assertion to avoid TypeScript errors
+  const quizWithTheme = quiz as any;
+  const theme = quizWithTheme.theme || {
     primaryColor: '#000000',
     fontFamily: 'Arial, sans-serif',
     backgroundColor: '#ffffff'
   };
   
   // Get available themes
-  const themes = quiz.themes || [];
-  const activeThemeId = quiz.activeThemeId || 'theme1';
+  const themes = quizWithTheme.themes || [];
+  const activeThemeId = quizWithTheme.activeThemeId || 'theme1';
   
   // Available font options - expanded to match element panel
   const fontOptions = [
