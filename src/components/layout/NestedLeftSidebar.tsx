@@ -358,20 +358,33 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   // Get the entire store state and ignore TypeScript errors for specific actions
   const { quiz } = useQuizStore();
   
+  // Create a typesafe version of the store with type assertions
+  type UpdateThemeFunction = (themeSettings: any) => void;
+  type SwitchThemeFunction = (themeId: string) => void;
+  
   // Handle color change by directly calling the store
   const handleColorChange = (colorType: 'primaryColor' | 'backgroundColor', color: string) => {
-    // Call the function directly on the store
-    useQuizStore.getState().updateTheme?.({ [colorType]: color });
+    // Call the function directly on the store with type assertion
+    const state = useQuizStore.getState() as any;
+    if (state.updateTheme) {
+      state.updateTheme({ [colorType]: color });
+    }
   };
 
   // Handle font change
   const handleFontChange = (value: string) => {
-    useQuizStore.getState().updateTheme?.({ fontFamily: value });
+    const state = useQuizStore.getState() as any;
+    if (state.updateTheme) {
+      state.updateTheme({ fontFamily: value });
+    }
   };
   
   // Handle theme selection change
   const handleThemeChange = (themeId: string) => {
-    useQuizStore.getState().switchTheme?.(themeId);
+    const state = useQuizStore.getState() as any;
+    if (state.switchTheme) {
+      state.switchTheme(themeId);
+    }
   };
   
   // Get theme settings or use defaults
