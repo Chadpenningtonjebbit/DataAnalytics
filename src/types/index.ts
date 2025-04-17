@@ -106,4 +106,5 @@ export type ThemeSettings = {
   fontFamily: string; // Default font for all text elements
   backgroundColor: string; // Default background for sections
   cornerRadius: string; // Default border radius for elements
+  size: 'small' | 'medium' | 'large'; // Size controls for fonts and padding
 }; 

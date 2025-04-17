@@ -26,7 +26,8 @@ const defaultTheme: ThemeSettings = {
   primaryColor: '#000000', // Black
   fontFamily: 'Arial, sans-serif',
   backgroundColor: '#ffffff', // White
-  cornerRadius: '4px' // Default corner radius
+  cornerRadius: '4px', // Default corner radius
+  size: 'small' // Default size
 };
 
 // Predefined themes
@@ -38,7 +39,8 @@ const predefinedThemes: ThemeItem[] = [
       primaryColor: '#000000', // Black
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#ffffff', // White
-      cornerRadius: '4px' // Default corner radius
+      cornerRadius: '4px', // Default corner radius
+      size: 'small'
     }
   },
   {
@@ -48,7 +50,8 @@ const predefinedThemes: ThemeItem[] = [
       primaryColor: '#0ea5e9', // Sky blue
       fontFamily: 'Helvetica, sans-serif',
       backgroundColor: '#f0f9ff', // Light blue bg
-      cornerRadius: '8px' // More rounded corners
+      cornerRadius: '8px', // More rounded corners
+      size: 'small'
     }
   },
   {
@@ -58,7 +61,8 @@ const predefinedThemes: ThemeItem[] = [
       primaryColor: '#10b981', // Emerald green
       fontFamily: "'Montserrat', sans-serif",
       backgroundColor: '#ecfdf5', // Light green bg
-      cornerRadius: '12px' // Even more rounded corners
+      cornerRadius: '12px', // Even more rounded corners
+      size: 'medium'
     }
   },
   {
@@ -68,7 +72,8 @@ const predefinedThemes: ThemeItem[] = [
       primaryColor: '#8b5cf6', // Purple
       fontFamily: "'Poppins', sans-serif",
       backgroundColor: '#f5f3ff', // Light purple bg
-      cornerRadius: '6px' // Medium rounded corners
+      cornerRadius: '6px', // Medium rounded corners
+      size: 'medium'
     }
   },
   {
@@ -78,13 +83,42 @@ const predefinedThemes: ThemeItem[] = [
       primaryColor: '#ef4444', // Red
       fontFamily: "'Roboto', sans-serif",
       backgroundColor: '#fef2f2', // Light red bg
-      cornerRadius: '0px' // No rounded corners
+      cornerRadius: '0px', // No rounded corners
+      size: 'large'
     }
   }
 ];
 
 // Default theme item (pointing to the first predefined theme)
 const defaultThemeItem: ThemeItem = predefinedThemes[0];
+
+// Define size mappings for different elements
+const sizeMappings = {
+  fontSize: {
+    text: {
+      small: '16px',
+      medium: '18px',
+      large: '22px'
+    },
+    button: {
+      small: '14px',
+      medium: '16px',
+      large: '18px'
+    },
+    link: {
+      small: '14px',
+      medium: '16px',
+      large: '18px'
+    }
+  },
+  padding: {
+    button: {
+      small: '8px 16px',
+      medium: '12px 24px',
+      large: '16px 32px'
+    }
+  }
+};
 
 // Helper function to find and update a group recursively
 const findAndUpdateGroup = (group: QuizElement, targetGroupId: string, newElements: QuizElement[]): QuizElement => {
@@ -419,6 +453,20 @@ const hasManualStyleOverride = (element: QuizElement, styleKey: string): boolean
     if (styleKey === 'borderRadius' && ['button', 'image'].includes(element.type)) {
       return currentValue !== defaultTheme.cornerRadius;
     }
+    
+    if (styleKey === 'fontSize') {
+      if (element.type === 'text') {
+        return currentValue !== sizeMappings.fontSize.text[defaultTheme.size];
+      } else if (element.type === 'button') {
+        return currentValue !== sizeMappings.fontSize.button[defaultTheme.size];
+      } else if (element.type === 'link') {
+        return currentValue !== sizeMappings.fontSize.link[defaultTheme.size];
+      }
+    }
+    
+    if (styleKey === 'padding' && element.type === 'button') {
+      return currentValue !== sizeMappings.padding.button[defaultTheme.size];
+    }
   }
   
   // Style not present or not an override
@@ -441,12 +489,36 @@ const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): {
     // Apply corner radius to buttons
     defaultStyles.borderRadius = theme.cornerRadius;
     themeStyles.push('borderRadius');
+    
+    // Apply font size based on theme size
+    if (sizeMappings.fontSize.button[theme.size]) {
+      defaultStyles.fontSize = sizeMappings.fontSize.button[theme.size];
+      themeStyles.push('fontSize');
+    }
+    
+    // Apply padding based on theme size
+    if (sizeMappings.padding.button[theme.size]) {
+      defaultStyles.padding = sizeMappings.padding.button[theme.size];
+      themeStyles.push('padding');
+    }
   }
   
   // Apply font family to text elements
   if (['text', 'button', 'link'].includes(type)) {
     defaultStyles.fontFamily = theme.fontFamily;
     themeStyles.push('fontFamily');
+  }
+  
+  // Apply font size to text elements
+  if (type === 'text' && sizeMappings.fontSize.text[theme.size]) {
+    defaultStyles.fontSize = sizeMappings.fontSize.text[theme.size];
+    themeStyles.push('fontSize');
+  }
+  
+  // Apply font size to link elements
+  if (type === 'link' && sizeMappings.fontSize.link[theme.size]) {
+    defaultStyles.fontSize = sizeMappings.fontSize.link[theme.size];
+    themeStyles.push('fontSize');
   }
   
   // Apply corner radius to images
@@ -948,6 +1020,16 @@ export const useQuizStore = create<QuizState>()(
                   themeValue = currentTheme.fontFamily;
                 } else if (styleKey === 'borderRadius' && ['button', 'image'].includes(element.type)) {
                   themeValue = currentTheme.cornerRadius;
+                } else if (styleKey === 'fontSize') {
+                  if (element.type === 'text' && sizeMappings.fontSize.text[currentTheme.size]) {
+                    themeValue = sizeMappings.fontSize.text[currentTheme.size];
+                  } else if (element.type === 'button' && sizeMappings.fontSize.button[currentTheme.size]) {
+                    themeValue = sizeMappings.fontSize.button[currentTheme.size];
+                  } else if (element.type === 'link' && sizeMappings.fontSize.link[currentTheme.size]) {
+                    themeValue = sizeMappings.fontSize.link[currentTheme.size];
+                  }
+                } else if (styleKey === 'padding' && element.type === 'button') {
+                  themeValue = sizeMappings.padding.button[currentTheme.size];
                 }
                 
                 // If the new value is different from the theme value, consider it a manual override
@@ -2212,6 +2294,32 @@ export const useQuizStore = create<QuizState>()(
               }
             };
             
+            // Add font size properties based on theme size
+            if (element.type === 'text' && sizeMappings.fontSize.text[theme.size]) {
+              themeProps.fontSize = {
+                value: sizeMappings.fontSize.text[theme.size],
+                applyTo: ['text']
+              };
+            } else if (element.type === 'button' && sizeMappings.fontSize.button[theme.size]) {
+              themeProps.fontSize = {
+                value: sizeMappings.fontSize.button[theme.size],
+                applyTo: ['button']
+              };
+            } else if (element.type === 'link' && sizeMappings.fontSize.link[theme.size]) {
+              themeProps.fontSize = {
+                value: sizeMappings.fontSize.link[theme.size],
+                applyTo: ['link']
+              };
+            }
+            
+            // Add padding for buttons based on theme size
+            if (element.type === 'button' && sizeMappings.padding.button[theme.size]) {
+              themeProps.padding = {
+                value: sizeMappings.padding.button[theme.size],
+                applyTo: ['button']
+              };
+            }
+            
             // Apply each theme property if applicable to this element type and not manually overridden
             Object.entries(themeProps).forEach(([prop, { value, applyTo }]) => {
               if (applyTo.includes(element.type) && !hasManualStyleOverride(element, prop)) {
@@ -2310,6 +2418,32 @@ export const useQuizStore = create<QuizState>()(
                   applyTo: ['button', 'image']
                 }
               };
+              
+              // Add font size properties based on theme size
+              if (element.type === 'text' && sizeMappings.fontSize.text[theme.size]) {
+                themeProps.fontSize = {
+                  value: sizeMappings.fontSize.text[theme.size],
+                  applyTo: ['text']
+                };
+              } else if (element.type === 'button' && sizeMappings.fontSize.button[theme.size]) {
+                themeProps.fontSize = {
+                  value: sizeMappings.fontSize.button[theme.size],
+                  applyTo: ['button']
+                };
+              } else if (element.type === 'link' && sizeMappings.fontSize.link[theme.size]) {
+                themeProps.fontSize = {
+                  value: sizeMappings.fontSize.link[theme.size],
+                  applyTo: ['link']
+                };
+              }
+              
+              // Add padding for buttons based on theme size
+              if (element.type === 'button' && sizeMappings.padding.button[theme.size]) {
+                themeProps.padding = {
+                  value: sizeMappings.padding.button[theme.size],
+                  applyTo: ['button']
+                };
+              }
               
               // Apply each theme property if applicable to this element type
               // And either bypass the manual override check when resetting all styles OR check for overrides normally

@@ -389,6 +389,14 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     }
   };
   
+  // Handle size change
+  const handleSizeChange = (value: string) => {
+    const state = useQuizStore.getState() as any;
+    if (state.updateTheme) {
+      state.updateTheme({ size: value });
+    }
+  };
+  
   // Handle theme selection change
   const handleThemeChange = (themeId: string) => {
     const state = useQuizStore.getState() as any;
@@ -404,7 +412,8 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     primaryColor: '#000000',
     fontFamily: 'Arial, sans-serif',
     backgroundColor: '#ffffff',
-    cornerRadius: '4px'
+    cornerRadius: '4px',
+    size: 'small'
   };
   
   // Get available themes
@@ -525,6 +534,26 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
               value={theme.backgroundColor}
               onChange={(color) => handleColorChange('backgroundColor', color)}
             />
+            
+            {/* Size Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="element-size" className="text-sm font-medium">
+                Element Size
+              </Label>
+              <Select onValueChange={handleSizeChange} value={theme.size || 'small'}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select element size" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="small">Small</SelectItem>
+                  <SelectItem value="medium">Medium</SelectItem>
+                  <SelectItem value="large">Large</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Controls font size and padding for text and buttons
+              </p>
+            </div>
           </div>
         </PropertyGroup>
       </div>
