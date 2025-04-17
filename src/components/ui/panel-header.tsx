@@ -28,8 +28,8 @@ export function PanelHeader({
       {/* Thin colored strip at very top */}
       <div className="h-[4px]" style={{ backgroundColor: color }} />
       
-      {/* White header with title and close button */}
-      <div className="bg-white flex items-center justify-between px-6 py-3 border-b border-border">
+      {/* Header with title and close button */}
+      <div className="bg-background flex items-center justify-between px-6 py-3 border-b border-border">
         <h2 className="text-lg font-semibold">{title}</h2>
         
         {onClose && (
