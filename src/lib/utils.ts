@@ -69,6 +69,11 @@ export function generateElementHtml(element: QuizElement): string {
     }
   });
   
+  // Add max-width: 100% to all elements to prevent overflow
+  if (!inlineStyle.some(style => style.startsWith('max-width:'))) {
+    inlineStyle.push('max-width: 100%');
+  }
+  
   // Add defaults for typography properties if not specified
   if (['text', 'button', 'link'].includes(element.type)) {
     if (!element.styles?.fontSize && !inlineStyle.some(s => s.startsWith('font-size:'))) {

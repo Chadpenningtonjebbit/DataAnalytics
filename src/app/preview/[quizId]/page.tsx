@@ -230,6 +230,12 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           width: 100%;
           height: 100%;
           overflow: hidden;
+          box-sizing: border-box;
+        }
+        
+        /* Ensure all elements use border-box */
+        *, *::before, *::after {
+          box-sizing: border-box;
         }
         
         /* Fallback font definitions */
@@ -336,6 +342,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           box-sizing: border-box;
           font-family: inherit;
           text-align: center;
+          max-width: 100%;
         }
         
         p {
@@ -344,6 +351,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           line-height: 1.5;
           color: #000000;
           font-family: inherit;
+          max-width: 100%;
         }
         
         img {
@@ -360,6 +368,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           display: inline-block;
           font-family: inherit;
           text-align: center;
+          max-width: 100%;
         }
         
         .element-group {
@@ -370,6 +379,7 @@ export default function PreviewPage({ params }: PreviewPageProps) {
           box-sizing: border-box;
           width: 100%;
           font-family: inherit;
+          max-width: 100%;
         }
         
         /* Apply layout attributes */

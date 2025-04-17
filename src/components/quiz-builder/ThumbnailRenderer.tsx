@@ -41,6 +41,12 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               width: 600px;
               height: 400px;
               background-color: white;
+              box-sizing: border-box;
+            }
+            
+            /* Ensure all elements use border-box */
+            *, *::before, *::after {
+              box-sizing: border-box;
             }
             
             /* Base styles for quiz */
@@ -96,6 +102,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               text-align: center;
               line-height: normal;
               box-sizing: border-box;
+              max-width: 100%;
             }
             
             /* Text elements */
@@ -106,6 +113,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               line-height: 1.5;
               color: #000000;
               text-align: center;
+              max-width: 100%;
             }
             
             /* Images */
@@ -126,6 +134,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               text-align: center;
               display: inline-block;
               width: 100%;
+              max-width: 100%;
             }
             
             /* Groups */
@@ -137,6 +146,7 @@ export function ThumbnailRenderer({ screen, onRender }: ThumbnailRendererProps) 
               box-sizing: border-box;
               width: 100%; /* Ensure groups take full width by default */
               text-align: center;
+              max-width: 100%;
             }
             
             /* Better gap support - use gap attribute from data attributes if present */

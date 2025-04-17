@@ -117,6 +117,18 @@ const sizeMappings = {
       medium: '12px 24px',
       large: '16px 32px'
     }
+  },
+  width: {
+    text: {
+      small: '200px',
+      medium: '400px',
+      large: '600px'
+    },
+    button: {
+      small: '200px',
+      medium: '400px',
+      large: '600px'
+    }
   }
 };
 
@@ -467,6 +479,14 @@ const hasManualStyleOverride = (element: QuizElement, styleKey: string): boolean
     if (styleKey === 'padding' && element.type === 'button') {
       return currentValue !== sizeMappings.padding.button[defaultTheme.size];
     }
+    
+    if (styleKey === 'width') {
+      if (element.type === 'text') {
+        return currentValue !== sizeMappings.width.text[defaultTheme.size];
+      } else if (element.type === 'button') {
+        return currentValue !== sizeMappings.width.button[defaultTheme.size];
+      }
+    }
   }
   
   // Style not present or not an override
@@ -501,6 +521,12 @@ const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): {
       defaultStyles.padding = sizeMappings.padding.button[theme.size];
       themeStyles.push('padding');
     }
+    
+    // Apply width based on theme size
+    if (sizeMappings.width.button[theme.size]) {
+      defaultStyles.width = sizeMappings.width.button[theme.size];
+      themeStyles.push('width');
+    }
   }
   
   // Apply font family to text elements
@@ -513,6 +539,12 @@ const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): {
   if (type === 'text' && sizeMappings.fontSize.text[theme.size]) {
     defaultStyles.fontSize = sizeMappings.fontSize.text[theme.size];
     themeStyles.push('fontSize');
+  }
+  
+  // Apply width to text elements
+  if (type === 'text' && sizeMappings.width.text[theme.size]) {
+    defaultStyles.width = sizeMappings.width.text[theme.size];
+    themeStyles.push('width');
   }
   
   // Apply font size to link elements
@@ -2312,10 +2344,36 @@ export const useQuizStore = create<QuizState>()(
               };
             }
             
+            // Add width for text and button elements based on theme size
+            if (element.type === 'text' && sizeMappings.width.text[theme.size]) {
+              themeProps.width = {
+                value: sizeMappings.width.text[theme.size],
+                applyTo: ['text']
+              };
+            } else if (element.type === 'button' && sizeMappings.width.button[theme.size]) {
+              themeProps.width = {
+                value: sizeMappings.width.button[theme.size],
+                applyTo: ['button']
+              };
+            }
+            
             // Add padding for buttons based on theme size
             if (element.type === 'button' && sizeMappings.padding.button[theme.size]) {
               themeProps.padding = {
                 value: sizeMappings.padding.button[theme.size],
+                applyTo: ['button']
+              };
+            }
+            
+            // Add width for text and button elements based on theme size
+            if (element.type === 'text' && sizeMappings.width.text[theme.size]) {
+              themeProps.width = {
+                value: sizeMappings.width.text[theme.size],
+                applyTo: ['text']
+              };
+            } else if (element.type === 'button' && sizeMappings.width.button[theme.size]) {
+              themeProps.width = {
+                value: sizeMappings.width.button[theme.size],
                 applyTo: ['button']
               };
             }
@@ -2437,10 +2495,36 @@ export const useQuizStore = create<QuizState>()(
                 };
               }
               
+              // Add width for text and button elements based on theme size
+              if (element.type === 'text' && sizeMappings.width.text[theme.size]) {
+                themeProps.width = {
+                  value: sizeMappings.width.text[theme.size],
+                  applyTo: ['text']
+                };
+              } else if (element.type === 'button' && sizeMappings.width.button[theme.size]) {
+                themeProps.width = {
+                  value: sizeMappings.width.button[theme.size],
+                  applyTo: ['button']
+                };
+              }
+              
               // Add padding for buttons based on theme size
               if (element.type === 'button' && sizeMappings.padding.button[theme.size]) {
                 themeProps.padding = {
                   value: sizeMappings.padding.button[theme.size],
+                  applyTo: ['button']
+                };
+              }
+              
+              // Add width for text and button elements based on theme size
+              if (element.type === 'text' && sizeMappings.width.text[theme.size]) {
+                themeProps.width = {
+                  value: sizeMappings.width.text[theme.size],
+                  applyTo: ['text']
+                };
+              } else if (element.type === 'button' && sizeMappings.width.button[theme.size]) {
+                themeProps.width = {
+                  value: sizeMappings.width.button[theme.size],
                   applyTo: ['button']
                 };
               }
