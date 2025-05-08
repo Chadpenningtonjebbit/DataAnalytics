@@ -129,7 +129,17 @@ export function BrandSettingsModal({ open, onOpenChange }: BrandSettingsModalPro
         signal: controller.signal
       });
       
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // Handle non-JSON responses (like 504 Gateway Timeout HTML)
+        if (response.status === 504 || response.status === 502 || response.status === 503) {
+          throw new Error('The request timed out. This website may be too complex to scan in our cloud environment.');
+        } else {
+          throw new Error(`Failed to parse server response (Status: ${response.status})`);
+        }
+      }
       
       if (!response.ok || data.error) {
         // Handle specific error types with user-friendly messages
@@ -172,6 +182,9 @@ export function BrandSettingsModal({ open, onOpenChange }: BrandSettingsModalPro
             break;
           case 'bot_protection':
             errorMessage = 'This website has bot protection that blocks our scanner. Please try a different site.';
+            break;
+          case 'complex_site':
+            errorMessage = 'This website is too complex to scan in our cloud environment. Please try a simpler website.';
             break;
         }
         

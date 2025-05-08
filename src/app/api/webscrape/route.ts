@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Set a shorter timeout for Vercel deployment environment
+const TIMEOUT_MS = process.env.VERCEL ? 8000 : 15000; // 8 seconds on Vercel, 15 seconds locally
+
 export async function POST(request: Request) {
   try {
     const { url } = await request.json();
@@ -21,11 +24,43 @@ export async function POST(request: Request) {
       );
     }
     
+    // Check for known problematic domains that are likely to timeout
+    const problematicDomains = [
+      'asics.com',
+      'nike.com',
+      'adidas.com',
+      'amazon.com',
+      'walmart.com',
+      'target.com',
+      'bestbuy.com',
+      'homedepot.com',
+      'lowes.com',
+      'macys.com',
+      'nordstrom.com'
+    ];
+    
+    const urlObj = new URL(url);
+    const domain = urlObj.hostname.replace(/^www\./, '');
+    
+    // Check if this domain matches any in our problematic list
+    const isProblematicDomain = problematicDomains.some(d => domain.includes(d));
+    
+    if (isProblematicDomain && process.env.VERCEL) {
+      console.log(`[WebScrape] Detected problematic domain: ${domain}`);
+      return NextResponse.json({
+        error: "This website is too complex to scan in the cloud environment. Please try a simpler website.",
+        errorType: "complex_site"
+      }, { status: 422 });
+    }
+    
     console.log(`[WebScrape] Attempting to fetch: ${url}`);
     
     // Set timeout for the fetch request
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      console.log(`[WebScrape] Request timed out after ${TIMEOUT_MS}ms`);
+    }, TIMEOUT_MS);
     
     try {
       // Enhanced headers to better mimic a real browser
