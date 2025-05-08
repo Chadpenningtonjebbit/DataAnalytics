@@ -129,17 +129,53 @@ export function BrandSettingsModal({ open, onOpenChange }: BrandSettingsModalPro
         signal: controller.signal
       });
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
+      const data = await response.json();
+      
+      if (!response.ok || data.error) {
+        // Handle specific error types with user-friendly messages
+        const errorType = data.errorType || 'unknown_error';
+        let errorMessage = data.error || 'Error scanning website';
+        
+        switch (errorType) {
+          case 'access_forbidden':
+            errorMessage = 'This website is blocking our access. Try a different site.';
+            break;
+          case 'not_found':
+            errorMessage = 'Page not found. Please check the URL and try again.';
+            break;
+          case 'rate_limited':
+            errorMessage = 'The website is rate limiting our requests. Try again later.';
+            break;
+          case 'server_error':
+            errorMessage = 'The website server is experiencing issues. Try again later.';
+            break;
+          case 'not_html':
+            errorMessage = 'The URL does not point to an HTML page that we can scan.';
+            break;
+          case 'empty_response':
+            errorMessage = 'Received empty or invalid HTML response from the website.';
+            break;
+          case 'timeout':
+            errorMessage = 'The website took too long to respond. Try again later.';
+            break;
+          case 'domain_not_found':
+            errorMessage = 'Domain not found. Please check the URL is correct.';
+            break;
+          case 'connection_refused':
+            errorMessage = 'Connection refused by the server. The site may be down.';
+            break;
+          case 'connection_timeout':
+            errorMessage = 'Connection timed out. The site may be slow or unreachable.';
+            break;
+          case 'ssl_error':
+            errorMessage = 'SSL/TLS certificate error. The site may have security issues.';
+            break;
+        }
+        
+        throw new Error(errorMessage);
       }
       
       setScanProgress('Processing page content...');
-      const data = await response.json();
-      
-      if (data.error) {
-        throw new Error(data.error);
-      }
-      
       const html = data.html;
       
       // Use a temporary DOM element to parse HTML
@@ -238,7 +274,7 @@ export function BrandSettingsModal({ open, onOpenChange }: BrandSettingsModalPro
       
     } catch (error) {
       console.error('Error scanning website:', error);
-      setScanError('Error scanning website. Please check the URL and try again.');
+      setScanError(error instanceof Error ? error.message : 'Error scanning website. Please check the URL and try again.');
     } finally {
       if (scanTimeoutId) {
         clearTimeout(scanTimeoutId);
