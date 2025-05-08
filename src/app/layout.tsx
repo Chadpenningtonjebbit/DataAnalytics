@@ -3,6 +3,7 @@ import { Work_Sans } from "next/font/google";
 import "./globals.css";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { ToastProvider } from "@/components/ui/use-toast";
 
 const workSans = Work_Sans({ 
   subsets: ["latin"],
@@ -25,9 +26,11 @@ export default function RootLayout({
       <body className={`${workSans.className} ${workSans.variable}`}>
         <ThemeProvider defaultTheme="system" storageKey="simplebuilder-theme">
           <TooltipProvider delayDuration={300} skipDelayDuration={0}>
-            <div className="min-h-screen bg-background">
-              {children}
-            </div>
+            <ToastProvider>
+              <div className="min-h-screen bg-background">
+                {children}
+              </div>
+            </ToastProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>
