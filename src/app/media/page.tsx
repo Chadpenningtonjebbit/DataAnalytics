@@ -483,8 +483,8 @@ export default function Media() {
       <main className="flex-1 p-12 bg-muted">
         <div className="max-w-6xl mx-auto">
           <PageHeader
-            title="Media Library"
-            description="Manage your brand photos and product feeds"
+            title="My Brand"
+            description="Manage your brand assets and settings"
           />
           
           <div className="mt-6 grid grid-cols-12 gap-6">
@@ -499,7 +499,7 @@ export default function Media() {
                 <TabsList className="flex flex-col h-auto items-stretch space-y-2 bg-muted text-muted-foreground w-full rounded-lg p-0">
                   <TabsTrigger value="brand-photos" className="justify-start w-full px-4 py-2 text-sm mb-0">
                     <ImageIcon className="h-5 w-5 mr-2" />
-                    Brand Photos
+                    Brand Assets
                   </TabsTrigger>
                   <TabsTrigger value="product-feeds" className="justify-start w-full px-4 py-2 text-sm mb-0">
                     <ShoppingBag className="h-5 w-5 mr-2" />
@@ -524,7 +524,7 @@ export default function Media() {
                   <CardHeader>
                     <div className="flex items-center justify-between">
                       <div>
-                        <CardTitle className="mb-1">Brand Photos</CardTitle>
+                        <CardTitle className="mb-1">Brand Assets</CardTitle>
                         <CardDescription>Upload and manage images for your brand</CardDescription>
                       </div>
                     </div>
@@ -612,7 +612,6 @@ export default function Media() {
                           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
                         }}
                         autoUpload={true}
-                        folder="products"
                         onUploadComplete={handleFileUploadComplete}
                       />
                       
@@ -681,7 +680,8 @@ export default function Media() {
                     </div>
                     
                     {/* Website Scanner */}
-                    <div className="space-y-3">
+                    <div className="space-y-3 mt-8 pt-6 border-t">
+                      <h3 className="text-sm font-medium mb-3">Website Scanner</h3>
                       <div className="space-y-2">
                         <Label htmlFor="website-url">Website URL</Label>
                         <div className="flex gap-2">
@@ -777,6 +777,7 @@ export default function Media() {
                   <CardContent className="space-y-6">
                     {/* OpenAI API Key */}
                     <div className="space-y-2">
+                      <h3 className="text-sm font-medium mb-3">AI Integration</h3>
                       <Label htmlFor="openai-key">
                         OpenAI API Key
                       </Label>
