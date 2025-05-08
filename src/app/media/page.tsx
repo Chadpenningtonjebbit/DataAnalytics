@@ -6,9 +6,19 @@ import { PageHeader } from '@/components/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Upload, Image as ImageIcon, ShoppingBag, AlertCircle, CheckCircle, Trash2 } from 'lucide-react';
+import { Upload, Image as ImageIcon, ShoppingBag, AlertCircle, CheckCircle, Trash2, Globe, Key, Loader2 } from 'lucide-react';
 import { FileUpload } from '@/components/ui/file-upload';
 import { useFileUploader } from '@/hooks/useFileUploader';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table";
 
 export default function Media() {
   const [activeTab, setActiveTab] = useState('brand-photos');
@@ -25,6 +35,21 @@ export default function Media() {
   const [uploadedImages, setUploadedImages] = useState<{ url: string; name: string }[]>([]);
   const [uploadingImages, setUploadingImages] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  
+  // Website scanner states
+  const [websiteUrl, setWebsiteUrl] = useState<string>('');
+  const [brandName, setBrandName] = useState<string>('');
+  const [subpages, setSubpages] = useState<{url: string; title: string; type: string}[]>([]);
+  const [isScanning, setIsScanning] = useState(false);
+  const [scanError, setScanError] = useState<string | null>(null);
+  const [scanTimeoutId, setScanTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [scanProgress, setScanProgress] = useState<string>('');
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const [hasScanned, setHasScanned] = useState<boolean>(false);
+  const [lastScannedUrl, setLastScannedUrl] = useState<string>('');
+  
+  // API Integration states
+  const [openAIKey, setOpenAIKey] = useState('');
   
   // Fetch saved files on component mount
   useEffect(() => {
@@ -56,6 +81,33 @@ export default function Media() {
     };
     
     fetchSavedMedia();
+    
+    // Load saved brand settings data
+    const savedUrl = localStorage.getItem('brandWebsiteUrl') || '';
+    setWebsiteUrl(savedUrl);
+    
+    const savedBrandName = localStorage.getItem('brandName') || '';
+    setBrandName(savedBrandName);
+    
+    const savedApiKey = localStorage.getItem('brandOpenAIKey') || '';
+    setOpenAIKey(savedApiKey);
+    
+    // Load saved subpages if they exist
+    const savedSubpages = localStorage.getItem('brandWebsiteSubpages');
+    if (savedSubpages) {
+      try {
+        const parsedSubpages = JSON.parse(savedSubpages);
+        setSubpages(parsedSubpages);
+        
+        // If we have subpages, consider it as already scanned
+        if (parsedSubpages.length > 0 && savedUrl) {
+          setHasScanned(true);
+          setLastScannedUrl(savedUrl);
+        }
+      } catch (error) {
+        console.error('Error parsing saved subpages:', error);
+      }
+    }
   }, []);
   
   const handleBrandPhotosChange = useCallback((newFiles: File[]) => {
@@ -167,6 +219,263 @@ export default function Media() {
       });
   };
 
+  // Function to validate and format URL
+  const validateUrl = (url: string): string => {
+    let formattedUrl = url.trim();
+    if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
+      formattedUrl = 'https://' + formattedUrl;
+    }
+    return formattedUrl;
+  };
+  
+  // Function to scan website for subpages
+  const scanWebsite = async () => {
+    if (!websiteUrl) return;
+    
+    setIsScanning(true);
+    setScanError(null);
+    setSubpages([]);
+    setScanProgress('Connecting to website...');
+    
+    // Set a timeout to show progress messages
+    const timeoutId = setTimeout(() => {
+      setScanProgress('Still scanning... This may take longer for complex websites');
+    }, 5000);
+    
+    setScanTimeoutId(timeoutId);
+    
+    // Create abort controller for fetch
+    const controller = new AbortController();
+    setAbortController(controller);
+    
+    try {
+      const url = validateUrl(websiteUrl);
+      
+      // Use our server-side API endpoint
+      const response = await fetch('/api/webscrape', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ url }),
+        signal: controller.signal
+      });
+      
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        // Handle non-JSON responses (like 504 Gateway Timeout HTML)
+        if (response.status === 504 || response.status === 502 || response.status === 503) {
+          throw new Error('The request timed out. This website may be too complex to scan in our cloud environment.');
+        } else {
+          throw new Error(`Failed to parse server response (Status: ${response.status})`);
+        }
+      }
+      
+      if (!response.ok || data.error) {
+        // Handle specific error types with user-friendly messages
+        const errorType = data.errorType || 'unknown_error';
+        let errorMessage = data.error || 'Error scanning website';
+        
+        switch (errorType) {
+          case 'access_forbidden':
+            errorMessage = 'This website is blocking our access. Try a different site.';
+            break;
+          case 'not_found':
+            errorMessage = 'Page not found. Please check the URL and try again.';
+            break;
+          case 'rate_limited':
+            errorMessage = 'The website is rate limiting our requests. Try again later.';
+            break;
+          case 'server_error':
+            errorMessage = 'The website server is experiencing issues. Try again later.';
+            break;
+          case 'not_html':
+            errorMessage = 'The URL does not point to an HTML page that we can scan.';
+            break;
+          case 'empty_response':
+            errorMessage = 'Received empty or invalid HTML response from the website.';
+            break;
+          case 'timeout':
+            errorMessage = 'The website took too long to respond. Try again later.';
+            break;
+          case 'domain_not_found':
+            errorMessage = 'Domain not found. Please check the URL is correct.';
+            break;
+          case 'connection_refused':
+            errorMessage = 'Connection refused by the server. The site may be down.';
+            break;
+          case 'connection_timeout':
+            errorMessage = 'Connection timed out. The site may be slow or unreachable.';
+            break;
+          case 'ssl_error':
+            errorMessage = 'SSL/TLS certificate error. The site may have security issues.';
+            break;
+          case 'bot_protection':
+            errorMessage = 'This website has bot protection that blocks our scanner. Please try a different site.';
+            break;
+          case 'complex_site':
+            errorMessage = 'This website is too complex to scan in our cloud environment. Please try a simpler website.';
+            break;
+        }
+        
+        throw new Error(errorMessage);
+      }
+      
+      setScanProgress('Processing page content...');
+      const html = data.html;
+      
+      // Use a temporary DOM element to parse HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      const pageTitle = doc.querySelector('title')?.textContent || 'Homepage';
+      
+      const foundSubpages: {url: string; title: string; type: string}[] = [
+        {
+          url: url,
+          title: pageTitle,
+          type: 'page'
+        }
+      ];
+      
+      // Find all links in the HTML
+      const links = doc.querySelectorAll('a');
+      
+      // Create a URL object from the base URL
+      const baseUrl = new URL(url);
+      
+      // Process each link
+      links.forEach(link => {
+        try {
+          let href = link.getAttribute('href');
+          if (!href) return;
+          
+          // Skip empty, hash, or javascript links
+          if (href === '' || href.startsWith('#') || href.startsWith('javascript:') || href.startsWith('mailto:') || href.startsWith('tel:')) {
+            return;
+          }
+          
+          // Convert relative URLs to absolute
+          let absoluteUrl: URL;
+          try {
+            if (href.startsWith('/')) {
+              // Relative path from root
+              absoluteUrl = new URL(href, baseUrl.origin);
+            } else if (!href.includes('://')) {
+              // Relative path from current location
+              absoluteUrl = new URL(href, url);
+            } else {
+              // Already an absolute URL
+              absoluteUrl = new URL(href);
+            }
+          } catch (error) {
+            return; // Skip invalid URLs
+          }
+          
+          // Only include links to the same domain
+          if (absoluteUrl.hostname === baseUrl.hostname) {
+            // Get the text of the link or use the URL path if no text
+            const linkText = link.textContent?.trim() || absoluteUrl.pathname;
+            
+            // Determine the type of content based on the URL pattern or text
+            let type = 'page';
+            const path = absoluteUrl.pathname.toLowerCase();
+            
+            if (path.includes('blog') || path.includes('article') || path.includes('news')) {
+              type = 'blog';
+            } else if (path.includes('product') || path.includes('shop') || path.includes('store')) {
+              type = 'product';
+            } else if (path.includes('about') || path.includes('team') || path.includes('company')) {
+              type = 'about';
+            } else if (path.includes('contact') || path.includes('support')) {
+              type = 'contact';
+            } else if (path.includes('faq') || path.includes('help')) {
+              type = 'faq';
+            }
+            
+            // Only add if it's not already in the list
+            if (!foundSubpages.some(page => page.url === absoluteUrl.href)) {
+              foundSubpages.push({
+                url: absoluteUrl.href,
+                title: linkText,
+                type
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error processing link:', error);
+        }
+      });
+      
+      // Update state with found subpages
+      setSubpages(foundSubpages);
+      setHasScanned(true);
+      setLastScannedUrl(url);
+      
+      // Save to localStorage
+      localStorage.setItem('brandWebsiteUrl', url);
+      localStorage.setItem('brandWebsiteSubpages', JSON.stringify(foundSubpages));
+      
+    } catch (error) {
+      console.error('Error scanning website:', error);
+      setScanError((error as Error).message || 'Failed to scan website');
+    } finally {
+      setIsScanning(false);
+      if (scanTimeoutId) {
+        clearTimeout(scanTimeoutId);
+        setScanTimeoutId(null);
+      }
+      setAbortController(null);
+    }
+  };
+  
+  // Function to cancel an in-progress scan
+  const cancelScan = () => {
+    if (abortController) {
+      abortController.abort();
+    }
+    
+    if (scanTimeoutId) {
+      clearTimeout(scanTimeoutId);
+      setScanTimeoutId(null);
+    }
+    
+    setIsScanning(false);
+    setScanProgress('');
+  };
+  
+  // Function to handle URL input change
+  const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setWebsiteUrl(e.target.value);
+    setScanError(null);
+  };
+  
+  // Function to handle brand name input change
+  const handleBrandNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setBrandName(e.target.value);
+    localStorage.setItem('brandName', e.target.value);
+  };
+  
+  // Function to handle OpenAI API key change
+  const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setOpenAIKey(e.target.value);
+    localStorage.setItem('brandOpenAIKey', e.target.value);
+  };
+  
+  // Function to reset website scan
+  const resetSubpages = () => {
+    setSubpages([]);
+    setHasScanned(false);
+    setScanError(null);
+    localStorage.removeItem('brandWebsiteSubpages');
+  };
+  
+  // Format content type for display
+  const formatType = (type: string) => {
+    return type.charAt(0).toUpperCase() + type.slice(1);
+  };
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <AppHeader pageType="dashboard" />
@@ -195,6 +504,14 @@ export default function Media() {
                   <TabsTrigger value="product-feeds" className="justify-start w-full px-4 py-2 text-sm mb-0">
                     <ShoppingBag className="h-5 w-5 mr-2" />
                     Product Feeds
+                  </TabsTrigger>
+                  <TabsTrigger value="personalization" className="justify-start w-full px-4 py-2 text-sm mb-0">
+                    <Globe className="h-5 w-5 mr-2" />
+                    Personalization
+                  </TabsTrigger>
+                  <TabsTrigger value="integrations" className="justify-start w-full px-4 py-2 text-sm mb-0">
+                    <Key className="h-5 w-5 mr-2" />
+                    Integrations
                   </TabsTrigger>
                 </TabsList>
               </Tabs>
@@ -278,7 +595,7 @@ export default function Media() {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="mb-1">Product Feeds</CardTitle>
-                        <CardDescription>Import product data from CSV files</CardDescription>
+                        <CardDescription>Upload CSV or Excel files with your product information</CardDescription>
                       </div>
                     </div>
                   </CardHeader>
@@ -288,13 +605,14 @@ export default function Media() {
                       <FileUpload 
                         value={files} 
                         onChange={handleProductFilesChange} 
-                        maxFiles={1} 
+                        maxFiles={5} 
                         accept={{
                           'text/csv': ['.csv'],
-                          'application/vnd.ms-excel': ['.csv', '.xls'],
+                          'application/vnd.ms-excel': ['.xlsx', '.xls'],
                           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx']
-                        }} 
+                        }}
                         autoUpload={true}
+                        folder="products"
                         onUploadComplete={handleFileUploadComplete}
                       />
                       
@@ -307,39 +625,174 @@ export default function Media() {
                           </div>
                         </div>
                       )}
+                    </div>
+                    
+                    {/* Uploaded files list */}
+                    {uploadedFileUrls.length > 0 && (
+                      <div className="mt-6">
+                        <h3 className="text-sm font-medium mb-3">Uploaded Files</h3>
+                        <div className="space-y-2">
+                          {uploadedFileUrls.map((fileUrl, index) => {
+                            // Extract file name from URL
+                            const urlParts = fileUrl.split('/');
+                            const fileName = urlParts[urlParts.length - 1];
+                            
+                            return (
+                              <div key={index} className="flex items-center justify-between p-3 bg-muted rounded-md border">
+                                <span className="truncate flex-1 text-sm">{fileName}</span>
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon"
+                                  onClick={() => removeProductFile(index)}
+                                  className="text-muted-foreground hover:text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+              
+              {activeTab === 'personalization' && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="mb-1">Personalization</CardTitle>
+                        <CardDescription>Configure brand settings for personalized content</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* Brand Name */}
+                    <div className="space-y-2">
+                      <Label htmlFor="brand-name">Brand Name</Label>
+                      <Input 
+                        id="brand-name" 
+                        value={brandName} 
+                        onChange={handleBrandNameChange} 
+                        placeholder="Enter your brand name" 
+                      />
+                    </div>
+                    
+                    {/* Website Scanner */}
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Label htmlFor="website-url">Website URL</Label>
+                        <div className="flex gap-2">
+                          <Input 
+                            id="website-url" 
+                            value={websiteUrl} 
+                            onChange={handleUrlChange} 
+                            placeholder="https://example.com" 
+                            disabled={isScanning}
+                            className="flex-1"
+                          />
+                          {isScanning ? (
+                            <Button variant="outline" onClick={cancelScan}>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Cancel
+                            </Button>
+                          ) : (
+                            <Button 
+                              onClick={scanWebsite} 
+                              disabled={!websiteUrl.trim()}
+                            >
+                              <Globe className="h-4 w-4 mr-2" />
+                              {hasScanned ? 'Re-scan' : 'Scan'}
+                            </Button>
+                          )}
+                        </div>
+                      </div>
                       
-                      {/* Success display for uploaded files */}
-                      {uploadedFileUrls.length > 0 && (
-                        <div className="mt-6 space-y-3">
-                          <h3 className="text-sm font-medium">Uploaded Files</h3>
-                          <div className="grid grid-cols-3 gap-4">
-                            {uploadedFileUrls.map((url, index) => {
-                              const fileName = url.split('/').pop() || 'file';
-                              return (
-                                <div key={index} className="relative group bg-background rounded-md overflow-hidden border p-4">
-                                  <div className="flex flex-col items-center justify-center h-32">
-                                    <ShoppingBag className="h-12 w-12 text-muted-foreground mb-2" />
-                                    <p className="text-xs text-center text-muted-foreground break-all">
-                                      {fileName}
-                                    </p>
-                                  </div>
-                                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                    <Button 
-                                      variant="destructive" 
-                                      size="sm" 
-                                      className="h-8 w-8 rounded-full p-0"
-                                      onClick={() => removeProductFile(index)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                      <span className="sr-only">Delete file</span>
-                                    </Button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                      {/* Scanning progress */}
+                      {isScanning && (
+                        <div className="bg-muted p-3 rounded-md text-sm flex items-center gap-2">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>{scanProgress}</span>
+                        </div>
+                      )}
+                      
+                      {/* Scan error */}
+                      {scanError && (
+                        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-3 text-sm flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                          <div>
+                            <p className="font-medium">Error</p>
+                            <p>{scanError}</p>
                           </div>
                         </div>
                       )}
+                      
+                      {/* Subpages Table */}
+                      {subpages.length > 0 && (
+                        <div className="mt-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-medium">Found Content ({subpages.length} pages)</h3>
+                            <Button variant="outline" size="sm" onClick={resetSubpages}>
+                              Clear Results
+                            </Button>
+                          </div>
+                          
+                          <div className="border rounded-md">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead>Title</TableHead>
+                                  <TableHead>Type</TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {subpages.map((page, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell className="font-medium">{page.title}</TableCell>
+                                    <TableCell>{formatType(page.type)}</TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+              
+              {activeTab === 'integrations' && (
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="mb-1">Integrations</CardTitle>
+                        <CardDescription>Configure external API integrations</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    {/* OpenAI API Key */}
+                    <div className="space-y-2">
+                      <Label htmlFor="openai-key">
+                        OpenAI API Key
+                      </Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          id="openai-key" 
+                          value={openAIKey} 
+                          onChange={handleApiKeyChange} 
+                          placeholder="sk-..." 
+                          type="password"
+                          className="flex-1"
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Your API key is stored locally and never sent to our servers.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
