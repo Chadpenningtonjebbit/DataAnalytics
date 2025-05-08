@@ -1087,7 +1087,96 @@ export function PropertiesPanel() {
           <div className="property-group-content">
             <div className="space-y-2">
               <Label htmlFor="background-image">Image</Label>
-              <ImageInput 
+              <div className="flex gap-2">
+                <Input 
+                  id="background-image" 
+                  value={
+                    firstElement?.type === 'image' 
+                      ? commonProperties.attributes?.src || '' 
+                      : commonProperties.styles?.backgroundImage?.replace('url(', '').replace(')', '') || ''
+                  }
+                  onChange={(e) => {
+                    if (firstElement?.type === 'image') {
+                      handleAttributeChange('src', e.target.value);
+                    } else {
+                      handleStyleChange('backgroundImage', e.target.value ? `url(${e.target.value})` : '');
+                    }
+                  }}
+                  placeholder="https://example.com/image.jpg"
+                  className="flex-1"
+                />
+                <MediaPicker 
+                  onSelect={(url) => {
+                    if (firstElement?.type === 'image') {
+                      handleAttributeChange('src', url);
+                    } else {
+                      handleStyleChange('backgroundImage', `url(${url})`);
+                    }
+                  }}
+                  buttonLabel="Browse"
+                  triggerClassName="flex-shrink-0"
+                  mediaType="image"
+                  folder="brand-photos"
+                />
+              </div>
+            </div>
+            
+            {firstElement?.type === 'image' && (
+              <div className="space-y-2">
+                <Label htmlFor="image-alt">Alt Text</Label>
+                <Input 
+                  id="image-alt" 
+                  value={commonProperties.attributes?.alt || ''} 
+                  onChange={(e) => handleAttributeChange('alt', e.target.value)} 
+                  placeholder="Image description"
+                />
+              </div>
+            )}
+            
+            <div className="space-y-2">
+              <Label htmlFor="background-size">Image Fit</Label>
+              <Select
+                value={
+                  firstElement?.type === 'image' 
+                    ? commonProperties.styles?.objectFit || 'cover'
+                    : commonProperties.styles?.backgroundSize || 'cover'
+                }
+                onValueChange={(value) => {
+                  if (firstElement?.type === 'image') {
+                    handleStyleChange('objectFit', value);
+                  } else {
+                    handleStyleChange('backgroundSize', value);
+                  }
+                }}
+              >
+                <SelectTrigger id="background-size" className="w-full">
+                  <SelectValue placeholder="Select fit mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cover">
+                    <div className="flex items-center gap-2">
+                      <BoxSelect className="h-4 w-4" />
+                      <span>Cover (fill & crop)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="contain">
+                    <div className="flex items-center gap-2">
+                      <Minimize className="h-4 w-4" />
+                      <span>Contain (fit entire image)</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="fill">
+                    <div className="flex items-center gap-2">
+                      <Maximize className="h-4 w-4" />
+                      <span>Fill (stretch to fit)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <ImageInput
                 value={
                   firstElement?.type === 'image' 
                     ? (commonProperties.attributes?.src ? `url(${commonProperties.attributes?.src})` : '') 
@@ -1127,6 +1216,7 @@ export function PropertiesPanel() {
                     ? commonProperties.attributes?.alt || ''
                     : commonProperties.styles?.backgroundImageAlt as string || ''
                 }
+                placeholder="https://example.com/image.jpg"
                 folder="brand-photos"
               />
             </div>

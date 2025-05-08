@@ -818,13 +818,17 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
             src={element.attributes?.src || ''} 
             alt={element.attributes?.alt || ''}
             style={{ 
-              maxWidth: '100%', 
-              display: 'block',
-              margin: '0 auto',
-              borderRadius: 'inherit',
-              objectFit: (element.styles?.objectFit as 'fill' | 'contain' | 'cover') || 'cover',
               width: '100%',
-              height: '100%'
+              height: '100%',
+              objectFit: (element.styles?.objectFit as 'fill' | 'contain' | 'cover') || 'cover',
+              borderRadius: 'inherit',
+              display: 'block',
+              // If background styles are applied, they will take precedence
+              backgroundColor: element.styles?.backgroundColor || '',
+              backgroundImage: element.styles?.backgroundImage ? element.styles.backgroundImage : 'none',
+              backgroundSize: element.styles?.backgroundImage ? 'cover' : undefined,
+              backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
+              backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined
             }}
             {...interactiveAttributes}
           />

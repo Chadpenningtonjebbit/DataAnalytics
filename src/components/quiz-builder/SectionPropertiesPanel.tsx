@@ -50,6 +50,7 @@ import { NumericInput } from '@/components/ui/numeric-input';
 import { DropShadowControl } from '@/components/ui/dropshadow-control';
 import { cn } from '@/lib/utils';
 import { MediaPicker } from "@/components/ui/media-picker";
+import { ImageInput } from "@/components/ui/image-input";
 
 export function SectionPropertiesPanel() {
   const { 
@@ -302,22 +303,15 @@ export function SectionPropertiesPanel() {
           <div className="property-group-content">
             <div className="space-y-2">
               <Label htmlFor="background-image">Image</Label>
-              <div className="flex gap-2">
-                <Input 
-                  id="background-image" 
-                  value={section.styles?.backgroundImage?.replace('url(', '').replace(')', '') || ''} 
-                  onChange={(e) => handleStyleChange('backgroundImage', e.target.value ? `url(${e.target.value})` : '')} 
-                  placeholder="https://example.com/image.jpg"
-                  className="flex-1"
-                />
-                <MediaPicker 
-                  onSelect={(url) => handleStyleChange('backgroundImage', `url(${url})`)}
-                  buttonLabel="Browse"
-                  triggerClassName="flex-shrink-0"
-                  mediaType="image"
-                  folder="brand-photos"
-                />
-              </div>
+              <ImageInput 
+                value={section.styles?.backgroundImage || ''} 
+                onChange={(value) => handleStyleChange('backgroundImage', value)}
+                onFitChange={(value) => handleStyleChange('backgroundSize', value)}
+                onAltChange={(value) => handleStyleChange('backgroundImageAlt', value)}
+                fitValue={section.styles?.backgroundSize as string || 'cover'}
+                altText={section.styles?.backgroundImageAlt as string || ''}
+                folder="brand-photos"
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="background-color">Color</Label>
