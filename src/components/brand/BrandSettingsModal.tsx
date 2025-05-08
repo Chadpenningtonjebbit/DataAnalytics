@@ -170,6 +170,9 @@ export function BrandSettingsModal({ open, onOpenChange }: BrandSettingsModalPro
           case 'ssl_error':
             errorMessage = 'SSL/TLS certificate error. The site may have security issues.';
             break;
+          case 'bot_protection':
+            errorMessage = 'This website has bot protection that blocks our scanner. Please try a different site.';
+            break;
         }
         
         throw new Error(errorMessage);
