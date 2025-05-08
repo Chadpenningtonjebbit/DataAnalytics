@@ -1,0 +1,649 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-work-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}
+
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.141 0.005 285.823);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.141 0.005 285.823);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.141 0.005 285.823);
+  --primary: #f6339a;
+  --primary-rgb: 246, 51, 154; /* RGB value for primary color */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.967 0.001 286.375);
+  --secondary-foreground: #f6339a;
+  --muted: oklch(0.967 0.001 286.375);
+  --muted-foreground: oklch(0.552 0.016 285.938);
+  --accent: oklch(0.967 0.001 286.375);
+  --accent-foreground: #f6339a;
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.004 286.32);
+  --input: oklch(0.92 0.004 286.32);
+  --ring: #f6339a;
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.141 0.005 285.823);
+  --sidebar-primary: #f6339a;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.967 0.001 286.375);
+  --sidebar-accent-foreground: oklch(0.21 0.006 285.885);
+  --sidebar-border: oklch(0.92 0.004 286.32);
+  --sidebar-ring: oklch(0.705 0.015 286.067);
+}
+
+.dark {
+  --background: oklch(0.141 0.005 285.823);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.141 0.005 285.823);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.141 0.005 285.823);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: #f6339a;
+  --primary-rgb: 246, 51, 154; /* RGB value for primary color in dark mode */
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.274 0.006 286.033);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.274 0.006 286.033);
+  --muted-foreground: oklch(0.705 0.015 286.067);
+  --accent: oklch(0.274 0.006 286.033);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.274 0.006 286.033);
+  --input: oklch(0.274 0.006 286.033);
+  --ring: #f6339a;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.21 0.006 285.885);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: #f6339a;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.274 0.006 286.033);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.274 0.006 286.033);
+  --sidebar-ring: oklch(0.442 0.017 285.786);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Make elements in the builder non-focusable */
+.element-renderer, [data-no-focus="true"] {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+.element-renderer *, [data-no-focus="true"] * {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Allow pointer events on the element renderer itself */
+.element-renderer, [data-no-focus="true"] {
+  pointer-events: auto;
+}
+
+/* Prevent tab focusing on all interactive elements in the builder */
+.element-renderer button,
+.element-renderer a,
+.element-renderer input,
+.element-renderer select,
+.element-renderer textarea,
+.element-renderer [tabindex]:not([tabindex="-1"]) {
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Ensure proper border-radius inheritance for elements */
+.element-renderer {
+  position: relative;
+}
+
+.element-renderer > div:first-of-type {
+  border-radius: inherit;
+}
+
+/* Ensure selection borders respect element shapes */
+.element-renderer button,
+.element-renderer a,
+.element-renderer img,
+.element-renderer input,
+.element-renderer select, {
+  border-radius: inherit;
+}
+
+/* Resize handle styling */
+.resize-handle {
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+/* Grid background pattern - simple and visible */
+.grid-pattern-bg {
+  --grid-color: rgba(0, 0, 0, 0.1);
+  --grid-size: 16px;
+
+  background-color: #f5f5f5;
+  background-image: 
+    radial-gradient(circle at 1px 1px, var(--grid-color) 1px, transparent 1px);
+  background-size: var(--grid-size) var(--grid-size);
+  background-position: 0px 0px;
+}
+
+.dark .grid-pattern-bg {
+  --grid-color: rgba(255, 255, 255, 0.1);
+  background-color: #1a1a1a;
+}
+
+.left-sidebar::-webkit-scrollbar-thumb:hover,
+.right-sidebar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--muted-foreground);
+}
+
+/* Draggable elements */
+[data-draggable="true"],
+[data-dragging="true"] {
+  z-index: 9999 !important;
+  position: relative !important;
+}
+
+.draggable-overlay,
+[data-dragging="true"] {
+  z-index: 9999 !important;
+  position: relative !important;
+  pointer-events: none !important;
+}
+
+body.dragging * {
+  cursor: grabbing !important;
+}
+
+body.dragging .left-sidebar,
+body.dragging .left-sidebar *,
+body.dragging [data-dragging="true"],
+body.dragging [data-dragging="true"] * {
+  overflow: visible !important;
+}
+
+/* DndKit specific styles */
+div[data-dnd-kit-overlay] {
+  z-index: 9999 !important;
+  overflow: visible !important;
+  pointer-events: none !important;
+}
+
+div[data-dnd-kit-draggable] {
+  z-index: 9999 !important;
+  overflow: visible !important;
+}
+
+/* Empty state styling */
+.empty-state-icon {
+  animation: gentle-float 4s ease-in-out infinite;
+}
+
+@keyframes gentle-float {
+  0% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+  100% {
+    transform: translateY(0px);
+  }
+}
+
+/* Make element contents non-focusable, but keep outer element interactive */
+.quiz-element > p,
+.quiz-element > button,
+.quiz-element > a,
+.quiz-element > div,
+.quiz-element > img,
+.quiz-element > input,
+.quiz-element > select,
+.quiz-element > textarea {
+  pointer-events: none !important;
+  overflow: hidden;
+}
+
+/* Keep the element itself interactive */
+.quiz-element {
+  pointer-events: auto !important;
+  user-select: none;
+  position: relative !important;
+  box-sizing: border-box !important;
+  max-width: 100% !important;
+}
+
+/* Optimize group children container to allow selection */
+.group-children-container {
+  pointer-events: none !important;
+  overflow: visible !important;
+}
+
+.group-children-container > .quiz-element {
+  pointer-events: auto !important;
+}
+
+/* Direct percentage dimension fixes - single source of truth */
+.quiz-element[style*="width: 100%"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.quiz-element[style*="width: 50%"] {
+  width: 50% !important;
+  max-width: 50% !important;
+}
+
+.quiz-element[style*="width: 25%"] {
+  width: 25% !important;
+  max-width: 25% !important;
+}
+
+.quiz-element[style*="width: 75%"] {
+  width: 75% !important;
+  max-width: 75% !important;
+}
+
+.quiz-element[style*="height: 100%"] {
+  height: 100% !important;
+  max-height: 100% !important;
+}
+
+.quiz-element[style*="height: 50%"] {
+  height: 50% !important;
+  max-height: 50% !important;
+}
+
+.quiz-element[style*="height: 25%"] {
+  height: 25% !important;
+  max-height: 25% !important;
+}
+
+.quiz-element[style*="height: 75%"] {
+  height: 75% !important;
+  max-height: 75% !important;
+}
+
+/* Force proper percentage container relationship */
+.quiz-section {
+  position: relative !important;
+}
+
+/* Immediately contain the element as a direct child of section */
+.quiz-section > .quiz-element {
+  position: relative !important;
+}
+
+/* Unified interaction states for elements, sections, and groups */
+.quiz-element.hovered,
+.quiz-section.hovered,
+.group-children-container.hovered {
+  position: relative;
+}
+
+/* Outline style for hovered elements */
+.quiz-element.hovered::after,
+.quiz-section.hovered::after,
+.group-children-container.hovered::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 1px solid var(--primary);
+  pointer-events: none;
+  z-index: 40;
+  border-radius: inherit;
+  box-sizing: border-box;
+}
+
+/* Outline style for selected elements */
+.quiz-element.selected::after,
+.quiz-section.selected::after,
+.group-children-container.selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px solid var(--primary);
+  pointer-events: none;
+  z-index: 40;
+  border-radius: inherit;
+  box-sizing: border-box;
+}
+
+/* Element/Section/Group type label */
+.type-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  height: 20px;
+  padding: 0 8px;
+  background-color: var(--primary);
+  color: white;
+  font-size: 10px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+  z-index: 41;
+  pointer-events: none;
+}
+
+/* Section type label - positioned inside */
+.quiz-section > .type-label {
+  top: 0;
+  left: 0;
+  border-radius: 0px 0px 4px 0px;
+  z-index: 42;
+}
+
+/* Navigation arrows container - horizontal */
+.direction-arrows.horizontal {
+  position: absolute;
+  top: -24px;
+  right: 0;
+  display: flex;
+  gap: 4px;
+  z-index: 41;
+}
+
+/* Navigation arrows container - vertical */
+.direction-arrows.vertical {
+  position: absolute;
+  left: -24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  z-index: 41;
+}
+
+/* Arrow button styling */
+.arrow-button {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px !important;
+  background-color: var(--primary);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  pointer-events: auto !important;
+  transition: background-color 0.2s;
+}
+
+.arrow-button:hover {
+  background-color: rgba(var(--primary-rgb), 0.8);
+}
+
+.arrow-button svg {
+  width: 12px;
+  height: 12px;
+  pointer-events: none !important;
+}
+
+/* Preserve the element shape in hover and selection states */
+.quiz-element {
+  position: relative !important;
+  z-index: 1;
+}
+
+/* Make arrows clickable and fix element shape matching */
+.arrow-button {
+  z-index: 50;
+  position: relative;
+}
+
+/* Ensure type label is above the selection border */
+.type-label {
+  z-index: 50;
+}
+
+/* Special case for buttons to preserve their curved appearance */
+.quiz-element.button {
+  overflow: visible;
+}
+
+.quiz-element.button::after {
+  border-radius: inherit;
+}
+
+/* Fix issue with curved buttons and selection states */
+.quiz-element::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  /* Remove any default border - only apply borders in .hovered and .selected states */
+  border-color: transparent;
+}
+
+/* Remove the outline from group children container when parent is selected */
+.quiz-element.group.selected .group-children-container::after {
+  display: none;
+}
+
+/* Ensure groups only show one type label */
+.quiz-element.group.selected .type-label ~ .type-label,
+.quiz-element.group.hovered .type-label ~ .type-label {
+  display: none;
+}
+
+/* Make sure group children don't have the blue outline when the group is selected */
+.quiz-element.group.selected .group-children-container > .quiz-element::after {
+  border-color: transparent;
+}
+
+/* Editing mode styles - enable text selection and text cursor */
+.quiz-element.editing {
+  cursor: text !important;
+  pointer-events: auto !important;
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
+}
+
+.quiz-element.editing * {
+  cursor: text !important;
+  pointer-events: auto !important;
+  user-select: auto !important;
+  -webkit-user-select: auto !important;
+  -moz-user-select: auto !important;
+  -ms-user-select: auto !important;
+}
+
+/* When editing, hide selection UI */
+.quiz-element.editing::after {
+  border-color: var(--primary) !important;
+  border-width: 2px !important;
+  pointer-events: none !important;
+}
+
+/* When editing, hide type label and direction arrows but keep border */
+.quiz-element.editing .type-label,
+.quiz-element.editing .direction-arrows {
+  display: none !important;
+}
+
+/* Enhanced editing contentEditable */
+.editable-content {
+  cursor: text !important;
+  caret-color: var(--primary);
+  outline: none !important;
+  user-select: text !important;
+  -webkit-user-select: text !important;
+  -moz-user-select: text !important;
+  -ms-user-select: text !important;
+  padding: 0;
+  margin: 0;
+}
+
+/* Make sure the editor can handle text selection properly */
+.editable-content::selection {
+  background-color: rgba(var(--primary-rgb), 0.2);
+}
+
+/* Allow for text selection in the editable areas */
+.quiz-element.editing > div {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* Override any pointer event restrictions when editing */
+[data-draggable="true"] .quiz-element.editing,
+.quiz-element.editing[data-dragging="true"] {
+  pointer-events: auto !important;
+  z-index: 9999 !important;
+}
+
+/* Property group consistent spacing styles */
+.property-group {
+  padding: 16px;
+}
+
+.property-group > div:first-of-type {
+  margin-bottom: 24px;
+}
+
+.property-group-no-content > div:first-of-type {
+  margin-bottom: 0;
+}
+
+.property-group-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px !important;
+}
+
+.property-group-content > div {
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Consistent spacing between labels and inputs */
+.property-group .space-y-2,
+.property-group .space-y-4,
+div[class*="Dialog"] .space-y-2,
+div[class*="Dialog"] .space-y-4,
+div[class*="dialog"] .space-y-2, 
+div[class*="dialog"] .space-y-4,
+form .space-y-2,
+form .space-y-4,
+.space-y-2,
+.space-y-4 {
+  display: flex;
+  flex-direction: column;
+  gap: 6px !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Label consistency */
+label,
+.label {
+  display: block;
+  margin-bottom: 4px !important;
+}
+
+/* Ensure slider groups maintain their spacing */
+.property-group .flex.items-center.gap-2,
+.flex.items-center.gap-2 {
+  display: flex;
+  gap: 8px !important;
+}
+
+/* Ensure property groups in all panels have consistent spacing */
+.right-sidebar .property-group,
+.left-sidebar .property-group {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Make sure section hover doesn't show when hovering over child elements */
+.quiz-section:has(.quiz-element:hover) > .type-label,
+.quiz-section:has(.quiz-element:hover)::after {
+  display: none !important;
+}
