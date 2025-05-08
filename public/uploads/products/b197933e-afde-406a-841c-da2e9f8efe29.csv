@@ -1,0 +1,64 @@
+Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Option1 Name,Option1 Value,Option2 Name,Option2 Value,Option3 Name,Option3 Value,Variant SKU,Variant Grams,Variant Inventory Tracker,Variant Inventory Qty,Variant Inventory Policy,Variant Fulfillment Service,Variant Price,Variant Compare At Price,Variant Requires Shipping,Variant Taxable,Variant Barcode,Image Src,Image Position,Image Alt Text,Gift Card,SEO Title,SEO Description,Google Shopping / Google Product Category,Google Shopping / Gender,Google Shopping / Age Group,Google Shopping / MPN,Google Shopping / AdWords Grouping,Google Shopping / AdWords Labels,Google Shopping / Condition,Google Shopping / Custom Product,Google Shopping / Custom Label 0,Google Shopping / Custom Label 1,Google Shopping / Custom Label 2,Google Shopping / Custom Label 3,Google Shopping / Custom Label 4,Variant Image,Variant Weight Unit,Variant Tax Code,Cost per item,Status
+mens-hoodie-blue,Men's Hoodie - Blue,"<p>Our classic hoodie in a vibrant blue color. Made from premium cotton blend for ultimate comfort.</p>
+<ul>
+  <li>80% cotton, 20% polyester</li>
+  <li>Double-lined hood with matching drawstring</li>
+  <li>Front pouch pocket</li>
+  <li>Ribbed cuffs and hem</li>
+</ul>",FashionBrand,Apparel,"hoodie, men's, blue, casual",true,Size,Small,Color,Blue,,,MH-BLU-S,500,shopify,25,deny,manual,49.99,59.99,true,true,639382918273,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Small,1,Blue hoodie small size,false,Men's Blue Casual Hoodie - Small Size,Comfortable blue hoodie for men in small size. Perfect for casual outings and lounging.,Apparel & Accessories > Clothing > Shirts & Tops,male,adult,MH-BLU-S,Men's Apparel,Hoodie,new,false,Winter,Sale,,,,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Small,oz,,29.99,active
+mens-hoodie-blue,Men's Hoodie - Blue,"<p>Our classic hoodie in a vibrant blue color. Made from premium cotton blend for ultimate comfort.</p>
+<ul>
+  <li>80% cotton, 20% polyester</li>
+  <li>Double-lined hood with matching drawstring</li>
+  <li>Front pouch pocket</li>
+  <li>Ribbed cuffs and hem</li>
+</ul>",FashionBrand,Apparel,"hoodie, men's, blue, casual",true,Size,Medium,Color,Blue,,,MH-BLU-M,500,shopify,35,deny,manual,49.99,59.99,true,true,639382918274,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Medium,1,Blue hoodie medium size,false,Men's Blue Casual Hoodie - Medium Size,Comfortable blue hoodie for men in medium size. Perfect for casual outings and lounging.,Apparel & Accessories > Clothing > Shirts & Tops,male,adult,MH-BLU-M,Men's Apparel,Hoodie,new,false,Winter,Sale,,,,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Medium,oz,,29.99,active
+mens-hoodie-blue,Men's Hoodie - Blue,"<p>Our classic hoodie in a vibrant blue color. Made from premium cotton blend for ultimate comfort.</p>
+<ul>
+  <li>80% cotton, 20% polyester</li>
+  <li>Double-lined hood with matching drawstring</li>
+  <li>Front pouch pocket</li>
+  <li>Ribbed cuffs and hem</li>
+</ul>",FashionBrand,Apparel,"hoodie, men's, blue, casual",true,Size,Large,Color,Blue,,,MH-BLU-L,500,shopify,20,deny,manual,49.99,59.99,true,true,639382918275,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Large,1,Blue hoodie large size,false,Men's Blue Casual Hoodie - Large Size,Comfortable blue hoodie for men in large size. Perfect for casual outings and lounging.,Apparel & Accessories > Clothing > Shirts & Tops,male,adult,MH-BLU-L,Men's Apparel,Hoodie,new,false,Winter,Sale,,,,https://placehold.co/600x800/0077be/white?text=Mens+Blue+Hoodie+Large,oz,,29.99,active
+womens-tshirt-red,Women's T-Shirt - Red,"<p>Stylish red t-shirt for women with a relaxed fit. Perfect for casual wear or layering.</p>
+<ul>
+  <li>100% soft cotton</li>
+  <li>Relaxed fit</li>
+  <li>Round neckline</li>
+  <li>Machine washable</li>
+</ul>",FashionBrand,Apparel,"t-shirt, women's, red, casual",true,Size,Small,Color,Red,,,WT-RED-S,250,shopify,15,deny,manual,29.99,34.99,true,true,729483029184,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Small,1,Red t-shirt small size,false,Women's Red T-Shirt - Small Size,Stylish red t-shirt for women in small size. Soft fabric and relaxed fit.,Apparel & Accessories > Clothing > Shirts & Tops,female,adult,WT-RED-S,Women's Apparel,T-Shirt,new,false,Summer,New Arrival,,,,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Small,oz,,15.99,active
+womens-tshirt-red,Women's T-Shirt - Red,"<p>Stylish red t-shirt for women with a relaxed fit. Perfect for casual wear or layering.</p>
+<ul>
+  <li>100% soft cotton</li>
+  <li>Relaxed fit</li>
+  <li>Round neckline</li>
+  <li>Machine washable</li>
+</ul>",FashionBrand,Apparel,"t-shirt, women's, red, casual",true,Size,Medium,Color,Red,,,WT-RED-M,250,shopify,25,deny,manual,29.99,34.99,true,true,729483029185,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Medium,1,Red t-shirt medium size,false,Women's Red T-Shirt - Medium Size,Stylish red t-shirt for women in medium size. Soft fabric and relaxed fit.,Apparel & Accessories > Clothing > Shirts & Tops,female,adult,WT-RED-M,Women's Apparel,T-Shirt,new,false,Summer,New Arrival,,,,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Medium,oz,,15.99,active
+womens-tshirt-red,Women's T-Shirt - Red,"<p>Stylish red t-shirt for women with a relaxed fit. Perfect for casual wear or layering.</p>
+<ul>
+  <li>100% soft cotton</li>
+  <li>Relaxed fit</li>
+  <li>Round neckline</li>
+  <li>Machine washable</li>
+</ul>",FashionBrand,Apparel,"t-shirt, women's, red, casual",true,Size,Large,Color,Red,,,WT-RED-L,250,shopify,20,deny,manual,29.99,34.99,true,true,729483029186,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Large,1,Red t-shirt large size,false,Women's Red T-Shirt - Large Size,Stylish red t-shirt for women in large size. Soft fabric and relaxed fit.,Apparel & Accessories > Clothing > Shirts & Tops,female,adult,WT-RED-L,Women's Apparel,T-Shirt,new,false,Summer,New Arrival,,,,https://placehold.co/600x800/ff3b3b/white?text=Womens+Red+Tshirt+Large,oz,,15.99,active
+unisex-sneakers-white,Unisex Sneakers - White,"<p>Classic white sneakers with a modern twist. Perfect for any casual outfit.</p>
+<ul>
+  <li>Durable canvas upper</li>
+  <li>Rubber sole for traction</li>
+  <li>Padded insole for comfort</li>
+  <li>Reinforced stitching</li>
+</ul>",FootwearCo,Footwear,"sneakers, unisex, white, shoes",true,Size,8,Color,White,,,SN-WHT-8,800,shopify,12,deny,manual,79.99,89.99,true,true,819273648291,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+8,1,White sneakers size 8,false,Classic White Unisex Sneakers - Size 8,Clean and modern white sneakers that go with everything. Available in size 8.,Apparel & Accessories > Shoes,unisex,adult,SN-WHT-8,Footwear,Sneakers,new,false,All-Season,Bestseller,,,,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+8,oz,,39.99,active
+unisex-sneakers-white,Unisex Sneakers - White,"<p>Classic white sneakers with a modern twist. Perfect for any casual outfit.</p>
+<ul>
+  <li>Durable canvas upper</li>
+  <li>Rubber sole for traction</li>
+  <li>Padded insole for comfort</li>
+  <li>Reinforced stitching</li>
+</ul>",FootwearCo,Footwear,"sneakers, unisex, white, shoes",true,Size,9,Color,White,,,SN-WHT-9,800,shopify,15,deny,manual,79.99,89.99,true,true,819273648292,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+9,1,White sneakers size 9,false,Classic White Unisex Sneakers - Size 9,Clean and modern white sneakers that go with everything. Available in size 9.,Apparel & Accessories > Shoes,unisex,adult,SN-WHT-9,Footwear,Sneakers,new,false,All-Season,Bestseller,,,,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+9,oz,,39.99,active
+unisex-sneakers-white,Unisex Sneakers - White,"<p>Classic white sneakers with a modern twist. Perfect for any casual outfit.</p>
+<ul>
+  <li>Durable canvas upper</li>
+  <li>Rubber sole for traction</li>
+  <li>Padded insole for comfort</li>
+  <li>Reinforced stitching</li>
+</ul>",FootwearCo,Footwear,"sneakers, unisex, white, shoes",true,Size,10,Color,White,,,SN-WHT-10,800,shopify,10,deny,manual,79.99,89.99,true,true,819273648293,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+10,1,White sneakers size 10,false,Classic White Unisex Sneakers - Size 10,Clean and modern white sneakers that go with everything. Available in size 10.,Apparel & Accessories > Shoes,unisex,adult,SN-WHT-10,Footwear,Sneakers,new,false,All-Season,Bestseller,,,,https://placehold.co/600x800/ffffff/333333?text=White+Sneakers+Size+10,oz,,39.99,active 

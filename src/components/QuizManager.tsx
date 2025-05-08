@@ -37,7 +37,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from '@/components/ui/custom-table';
+} from '@/components/ui/table';
 import { MoreVertical, Plus, Trash2, FileEdit, Copy, ExternalLink, ArrowDownAZ, Calendar, Clock } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
