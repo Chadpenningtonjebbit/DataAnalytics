@@ -681,7 +681,6 @@ export default function Media() {
                     
                     {/* Website Scanner */}
                     <div className="space-y-3 mt-8 pt-6 border-t">
-                      <h3 className="text-sm font-medium mb-3">Website Scanner</h3>
                       <div className="space-y-2">
                         <Label htmlFor="website-url">Website URL</Label>
                         <div className="flex gap-2">
@@ -700,11 +699,10 @@ export default function Media() {
                             </Button>
                           ) : (
                             <Button 
-                              onClick={scanWebsite} 
+                              onClick={hasScanned && lastScannedUrl === websiteUrl ? resetSubpages : scanWebsite} 
                               disabled={!websiteUrl.trim()}
                             >
-                              <Globe className="h-4 w-4 mr-2" />
-                              {hasScanned ? 'Re-scan' : 'Scan'}
+                              {hasScanned && lastScannedUrl === websiteUrl ? 'Clear' : 'Scan'}
                             </Button>
                           )}
                         </div>
@@ -734,9 +732,6 @@ export default function Media() {
                         <div className="mt-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="text-sm font-medium">Found Content ({subpages.length} pages)</h3>
-                            <Button variant="outline" size="sm" onClick={resetSubpages}>
-                              Clear Results
-                            </Button>
                           </div>
                           
                           <div className="border rounded-md">
