@@ -249,7 +249,7 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     lineHeight: element.styles?.lineHeight,
     backgroundColor: element.styles?.backgroundColor,
     backgroundImage: element.styles?.backgroundImage,
-    backgroundSize: element.styles?.backgroundImage ? 'cover' : undefined,
+    backgroundSize: element.styles?.backgroundImage ? (element.styles?.backgroundSize || 'cover') : undefined,
     backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
     backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined,
     color: element.styles?.color,
@@ -826,7 +826,7 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
               // If background styles are applied, they will take precedence
               backgroundColor: element.styles?.backgroundColor || '',
               backgroundImage: element.styles?.backgroundImage ? element.styles.backgroundImage : 'none',
-              backgroundSize: element.styles?.backgroundImage ? 'cover' : undefined,
+              backgroundSize: element.styles?.backgroundImage ? (element.styles?.backgroundSize || 'cover') : undefined,
               backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
               backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined
             }}
@@ -967,7 +967,7 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
                 // Only block pointer events on children when group is not selected
                 pointerEvents: isSelected ? 'auto' : 'none',
                 backgroundImage: element.styles?.backgroundImage,
-                backgroundSize: element.styles?.backgroundImage ? 'cover' : undefined,
+                backgroundSize: element.styles?.backgroundImage ? (element.styles?.backgroundSize || 'cover') : undefined,
                 backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
                 backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined,
                 // Set border-width CSS variable for dynamic selection outline positioning
@@ -995,118 +995,6 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
           )}
         </div>
       </ContextMenuTrigger>
-      
-      {/* Context Menu Content - only show in edit mode */}
-      {!isViewMode && (
-        <ContextMenuContent className="w-64">
-          {/* Build menu items dynamically */}
-          {(() => {
-            // Define menu items in logical groups
-            const menuItems = [];
-            let hasPreviousGroup = false;
-            
-            // Group 1: Copy/Paste
-            const copyPasteGroup = [];
-            
-            // Copy is always available
-            copyPasteGroup.push(
-              <ContextMenuItem key="copy" onClick={handleCopy} className="cursor-pointer">
-                <Copy className="mr-2 h-4 w-4" />
-                Copy
-                <ContextMenuShortcut>⌘C</ContextMenuShortcut>
-              </ContextMenuItem>
-            );
-            
-            // Paste only when clipboard has content
-            if (clipboard.length > 0) {
-              copyPasteGroup.push(
-                <ContextMenuItem key="paste" onClick={handlePaste} className="cursor-pointer">
-                  <Clipboard className="mr-2 h-4 w-4" />
-                  Paste
-                  <ContextMenuShortcut>⌘V</ContextMenuShortcut>
-                </ContextMenuItem>
-              );
-            }
-            
-            // Add copy/paste group
-            if (copyPasteGroup.length > 0) {
-              menuItems.push(...copyPasteGroup);
-              hasPreviousGroup = true;
-            }
-            
-            // Group 2: Group/Ungroup
-            const groupingItems = [];
-            
-            if (element.isGroup) {
-              // Ungroup option for groups
-              groupingItems.push(
-                <ContextMenuItem key="ungroup" onClick={handleUngroup} className="cursor-pointer">
-                  <Ungroup className="mr-2 h-4 w-4" />
-                  Ungroup elements
-                  <ContextMenuShortcut>⌘⇧G</ContextMenuShortcut>
-                </ContextMenuItem>
-              );
-            } else if (selectedElementIds.length > 1) {
-              // Group with selected for non-groups when multiple elements are selected
-              groupingItems.push(
-                <ContextMenuItem key="group" onClick={handleGroup} className="cursor-pointer">
-                  <Group className="mr-2 h-4 w-4" />
-                  Group elements
-                  <ContextMenuShortcut>⌘G</ContextMenuShortcut>
-                </ContextMenuItem>
-              );
-            }
-            
-            // Add separator before grouping items if needed
-            if (groupingItems.length > 0 && hasPreviousGroup) {
-              menuItems.push(<ContextMenuSeparator key="sep1" />);
-            }
-            
-            // Add grouping items
-            if (groupingItems.length > 0) {
-              menuItems.push(...groupingItems);
-              hasPreviousGroup = true;
-            }
-            
-            // Group 3: Style reset
-            const styleItems = [];
-            
-            // Always show Reset style option without any conditions
-            styleItems.push(
-              <ContextMenuItem key="reset" onClick={handleResetToTheme} className="cursor-pointer">
-                <RefreshCw className="mr-2 h-4 w-4" />
-                Reset style
-              </ContextMenuItem>
-            );
-            
-            // Add separator before style items if needed
-            if (styleItems.length > 0 && hasPreviousGroup) {
-              menuItems.push(<ContextMenuSeparator key="sep2" />);
-            }
-            
-            // Add style items
-            if (styleItems.length > 0) {
-              menuItems.push(...styleItems);
-              hasPreviousGroup = true;
-            }
-            
-            // Group 4: Delete (always shown)
-            if (hasPreviousGroup) {
-              menuItems.push(<ContextMenuSeparator key="sep3" />);
-            }
-            
-            menuItems.push(
-              <ContextMenuItem key="delete" onClick={handleDelete} className="cursor-pointer text-destructive hover:text-destructive">
-                <Trash className="mr-2 h-4 w-4" />
-                Delete
-                <ContextMenuShortcut>⌫</ContextMenuShortcut>
-              </ContextMenuItem>
-            );
-            
-            return menuItems;
-          })()}
-        </ContextMenuContent>
-      )}
     </ContextMenu>
   );
-} 
+}
