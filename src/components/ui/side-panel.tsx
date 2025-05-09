@@ -38,7 +38,7 @@ export function SidePanel({
     >
       {isOpen && (
         <>
-          <PanelHeader title={title} onClose={onClose} color={color} />
+          <PanelHeader title={title} onClose={onClose} />
           <div className="flex-1 overflow-auto">{children}</div>
         </>
       )}

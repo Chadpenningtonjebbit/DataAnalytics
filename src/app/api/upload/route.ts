@@ -8,6 +8,9 @@ import { mkdir, writeFile } from 'fs/promises';
 // Determine if we're running locally or in production
 const isLocal = process.env.NODE_ENV === 'development';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 // Valid file types
 const validImageTypes = [
   "image/jpeg", 

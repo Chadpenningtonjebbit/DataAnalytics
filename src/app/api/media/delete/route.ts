@@ -7,6 +7,9 @@ import { unlink } from 'fs/promises';
 // Determine if we're running locally or in production
 const isLocal = process.env.NODE_ENV === 'development';
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

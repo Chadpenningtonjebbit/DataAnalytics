@@ -3,6 +3,9 @@ import { NextResponse } from "next/server";
 // Set a shorter timeout for Vercel deployment environment
 const TIMEOUT_MS = process.env.VERCEL ? 8000 : 15000; // 8 seconds on Vercel, 15 seconds locally
 
+// Mark this route as dynamic
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: Request) {
   try {
     const { url } = await request.json();
