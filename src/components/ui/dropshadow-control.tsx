@@ -6,14 +6,6 @@ import { Slider } from './slider';
 import { Label } from './label';
 import { NumericInput } from './numeric-input';
 import { cn } from '@/lib/utils';
-import { Button } from './button';
-import { Plus, Minus } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 interface DropShadowControlProps {
   boxShadow?: string;
@@ -65,12 +57,11 @@ export function DropShadowControl({
   onBoxShadowChange, 
   onTextShadowChange 
 }: DropShadowControlProps) {
-  const [hasShadow, setHasShadow] = useState(!!(hasBackground ? boxShadow : textShadow));
+  // Check if shadow exists based on props directly
+  const shadowExists = hasBackground ? !!boxShadow : !!textShadow;
   
   // Parse the initial shadow values
-  const shadowType = hasBackground ? 'box' : 'text';
   const shadow = hasBackground ? boxShadow : textShadow;
-  
   const parsedShadow = parseShadow(shadow, hasBackground);
   
   const [offset, setOffset] = useState(Math.max(Math.abs(parsedShadow.x), Math.abs(parsedShadow.y)));
@@ -82,41 +73,10 @@ export function DropShadowControl({
     const newShadow = hasBackground ? boxShadow : textShadow;
     const parsed = parseShadow(newShadow, hasBackground);
     
-    setHasShadow(!!newShadow);
     setOffset(Math.max(Math.abs(parsed.x), Math.abs(parsed.y)));
     setBlur(parsed.blur);
     setColor(parsed.color);
   }, [boxShadow, textShadow, hasBackground]);
-  
-  // Handle shadow toggle
-  const handleShadowToggle = () => {
-    if (hasShadow) {
-      if (hasBackground) {
-        onBoxShadowChange('');
-      } else {
-        onTextShadowChange('');
-      }
-    } else {
-      const shadowString = createShadowString(offset, offset, blur, color, hasBackground);
-      if (hasBackground) {
-        onBoxShadowChange(shadowString);
-      } else {
-        onTextShadowChange(shadowString);
-      }
-    }
-    setHasShadow(!hasShadow);
-  };
-  
-  // Update the shadow when any value changes
-  const updateShadow = () => {
-    const shadowString = createShadowString(offset, offset, blur, color, hasBackground);
-    
-    if (hasBackground) {
-      onBoxShadowChange(shadowString);
-    } else {
-      onTextShadowChange(shadowString);
-    }
-  };
   
   // Handle changes to individual values
   const handleOffsetChange = (value: number) => {
@@ -152,7 +112,7 @@ export function DropShadowControl({
   return (
     <div className="space-y-4">
       
-      {hasShadow && (
+      {shadowExists && (
         <>
           <div className="space-y-2">
             <Label>Offset</Label>

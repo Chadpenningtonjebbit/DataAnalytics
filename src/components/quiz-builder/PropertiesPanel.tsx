@@ -36,33 +36,19 @@ import { PropertyGroup } from '@/components/ui/property-group';
 import { 
   Type, 
   PaintBucket, 
-  Layers, 
-  Palette,
   Box,
-  AlignLeft,
-  Link as LinkIcon,
-  Image,
-  Maximize, 
-  Minimize,
   BoxSelect,
   SlidersHorizontal, 
   SlidersVertical, 
   Plus,
   Minus,
-  MinusCircle,
-  ChevronRight,
-  ArrowLeftRight,
-  LayoutGrid,
-  Paintbrush,
-  Square,
-  Layout,
   CloudLightning,
-  X,
   Tag,
   Copy,
   Pencil,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Maximize
 } from 'lucide-react';
 import { TextAlignButtonGroup } from '@/components/ui/text-align-button-group';
 import { NumericInput } from '@/components/ui/numeric-input';
@@ -72,9 +58,6 @@ import { JustifyContentButtonGroup } from '@/components/ui/justify-content-butto
 import { AlignItemsButtonGroup } from '@/components/ui/align-items-button-group';
 import { cn } from "@/lib/utils";
 import { DropShadowControl } from "@/components/ui/dropshadow-control";
-import {
-  ArrowDown,
-} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,9 +156,6 @@ export function PropertiesPanel() {
       size: false,
       spacing: false,
       borders: false,
-      effects: false,
-      layout: false,
-      content: false,
     };
     
     // Initialize with all potential property groups
@@ -186,15 +166,11 @@ export function PropertiesPanel() {
       size: true,
       spacing: true,
       borders: true,
-      effects: true,
-      layout: true,
-      content: true,
     };
     
     // Define which element types support which property groups
     const typographyElements = ['text', 'button', 'link', 'heading', 'paragraph'];
     const backgroundElements = ['text', 'button', 'link', 'container', 'image', 'group', 'heading', 'paragraph'];
-    const contentElements = ['text', 'button', 'link', 'heading', 'paragraph', 'image'];
     
     // Check if all selected elements support typography
     if (!selectedElements.every(el => typographyElements.includes(el.type))) {
@@ -204,11 +180,6 @@ export function PropertiesPanel() {
     // Check if all selected elements support background
     if (!selectedElements.every(el => backgroundElements.includes(el.type))) {
       groups.background = false;
-    }
-    
-    // Check if all selected elements have editable content
-    if (!selectedElements.every(el => contentElements.includes(el.type))) {
-      groups.content = false;
     }
     
     return groups;
@@ -260,6 +231,15 @@ export function PropertiesPanel() {
     }
     
     return result;
+  }, [selectedElements]);
+  
+  // Special function to check if any selected elements have a shadow
+  const anyShadowExists = useMemo(() => {
+    if (selectedElements.length === 0) return false;
+    
+    return selectedElements.some(element => 
+      element.styles?.boxShadow || element.styles?.textShadow
+    );
   }, [selectedElements]);
   
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -351,9 +331,6 @@ export function PropertiesPanel() {
   
   // Add states for expanded corners and borders controls
   const [expandedCorners, setExpandedCorners] = useState(false);
-  
-  // State for layout controls visibility
-  const [layoutVisible, setLayoutVisible] = useState(false);
 
   // Track which sections are expanded
   const [expandedSections, setExpandedSections] = useState({
@@ -785,12 +762,6 @@ export function PropertiesPanel() {
     applyStyleClass(selectedElementIds, classId);
   };
 
-  // Handle removing a style class from the selected elements
-  const handleRemoveStyleClass = () => {
-    if (selectedElementIds.length === 0) return;
-    removeStyleClass(selectedElementIds);
-  };
-
   // Local state for renaming a style class
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [classToRename, setClassToRename] = useState<string | null>(null);
@@ -914,12 +885,6 @@ export function PropertiesPanel() {
         </DialogContent>
       </Dialog>
 
-      {!allSameType && (
-        <div className="bg-muted/40 p-3 rounded-md text-sm text-muted-foreground">
-          <p>Multiple element types selected. Only common properties are shown.</p>
-        </div>
-      )}
-      
       {/* Style Classes */}
       {allSameType && (
         <PropertyGroup 
@@ -1577,7 +1542,7 @@ export function PropertiesPanel() {
         icon={<CloudLightning className="h-4 w-4" />}
         expanded={expandedSections.shadow}
         onToggle={() => setExpandedSections({...expandedSections, shadow: !expandedSections.shadow})}
-        className={commonProperties.styles?.boxShadow || commonProperties.styles?.textShadow ? "" : "property-group-no-content"}
+        className={anyShadowExists ? "" : "property-group-no-content"}
         action={
           <TooltipProvider>
             <Tooltip>
@@ -1587,7 +1552,7 @@ export function PropertiesPanel() {
                   size="icon" 
                   className="h-6 w-6" 
                   onClick={() => {
-                    if (commonProperties.styles?.boxShadow || commonProperties.styles?.textShadow) {
+                    if (anyShadowExists) {
                       // Remove shadow styles
                       selectedElements.forEach(element => {
                         updateElement(element.id, {
@@ -1601,7 +1566,7 @@ export function PropertiesPanel() {
                     } else {
                       // Add appropriate shadow based on element type
                       selectedElements.forEach(element => {
-                        if (element.type === 'button') {
+                        if (element.type === 'button' || element.type === 'image') {
                           updateElement(element.id, {
                             styles: {
                               ...element.styles,
@@ -1617,87 +1582,61 @@ export function PropertiesPanel() {
                           });
                         }
                       });
+                      
+                      // Ensure the section is expanded when adding a shadow
+                      setExpandedSections({...expandedSections, shadow: true});
                     }
                   }}
                 >
-                  {commonProperties.styles?.boxShadow || commonProperties.styles?.textShadow ? 
+                  {anyShadowExists ? 
                     <Minus className="h-4 w-4" /> : 
                     <Plus className="h-4 w-4" />
                   }
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                {commonProperties.styles?.boxShadow || commonProperties.styles?.textShadow ? "Remove shadow" : "Add shadow"}
+                {anyShadowExists ? "Remove shadow" : "Add shadow"}
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         }
       >
-        {(commonProperties.styles?.boxShadow || commonProperties.styles?.textShadow) && (
+        {anyShadowExists && (
           <DropShadowControl
-            boxShadow={commonProperties.styles?.boxShadow || ''}
-            textShadow={commonProperties.styles?.textShadow || ''}
-            hasBackground={!!commonProperties.styles?.backgroundColor}
-            onBoxShadowChange={(value) => handleStyleChange('boxShadow', value)}
-            onTextShadowChange={(value) => handleStyleChange('textShadow', value)}
+            boxShadow={commonProperties.styles?.boxShadow || selectedElements.some(el => el.styles?.boxShadow) ? '0px 4px 8px rgba(0, 0, 0, 0.4)' : ''}
+            textShadow={commonProperties.styles?.textShadow || selectedElements.some(el => el.styles?.textShadow) ? '0px 2px 4px rgba(0, 0, 0, 0.4)' : ''}
+            hasBackground={!!commonProperties.styles?.backgroundColor || selectedElements.some(el => 
+              el.type === 'button' || el.type === 'image'
+            )}
+            onBoxShadowChange={(value) => {
+              // Apply box shadow to appropriate elements
+              selectedElements.forEach(element => {
+                if (element.type === 'button' || element.type === 'image') {
+                  updateElement(element.id, {
+                    styles: {
+                      ...element.styles,
+                      boxShadow: value
+                    }
+                  });
+                }
+              });
+            }}
+            onTextShadowChange={(value) => {
+              // Apply text shadow to appropriate elements
+              selectedElements.forEach(element => {
+                if (element.type === 'text' || element.type === 'link') {
+                  updateElement(element.id, {
+                    styles: {
+                      ...element.styles,
+                      textShadow: value
+                    }
+                  });
+                }
+              });
+            }}
           />
         )}
       </PropertyGroup>
-      
-      {/* Content PropertyGroup */}
-      {supportedGroups.content && (
-        <PropertyGroup title="Content" icon={<Pencil className="h-4 w-4" />}>
-          <div className="space-y-2">
-            <Label htmlFor="content">Text</Label>
-            <Input
-              id="content"
-              value={commonProperties.content || ''}
-              onChange={handleTextChange}
-              placeholder="Enter text"
-            />
-          </div>
-        </PropertyGroup>
-      )}
-      
-      {/* Effects Controls */}
-      {supportedGroups.effects && (
-        <PropertyGroup title="Effects" icon={<Paintbrush className="h-4 w-4" />}>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 gap-4">
-              <DropShadowControl
-                value={{
-                  x: parseInt(commonProperties.styles?.dropShadowX?.toString() || '0'),
-                  y: parseInt(commonProperties.styles?.dropShadowY?.toString() || '0'),
-                  blur: parseInt(commonProperties.styles?.dropShadowBlur?.toString() || '0'),
-                  color: commonProperties.styles?.dropShadowColor?.toString() || 'rgba(0, 0, 0, 0.2)',
-                  enabled: !!commonProperties.styles?.dropShadowColor,
-                }}
-                onChange={(shadow) => {
-                  if (shadow.enabled) {
-                    handleStyleChange('dropShadowX', `${shadow.x}px`);
-                    handleStyleChange('dropShadowY', `${shadow.y}px`);
-                    handleStyleChange('dropShadowBlur', `${shadow.blur}px`);
-                    handleStyleChange('dropShadowColor', shadow.color);
-                  } else {
-                    // If shadow is disabled, remove all shadow properties
-                    selectedElements.forEach(element => {
-                      updateElement(element.id, {
-                        styles: {
-                          ...element.styles,
-                          dropShadowX: undefined,
-                          dropShadowY: undefined,
-                          dropShadowBlur: undefined,
-                          dropShadowColor: undefined,
-                        },
-                      });
-                    });
-                  }
-                }}
-              />
-            </div>
-          </div>
-        </PropertyGroup>
-      )}
     </div>
   );
 } 
