@@ -164,6 +164,56 @@ export function PropertiesPanel() {
     return selectedElements.every(el => el.type === firstType);
   }, [selectedElements]);
   
+  // Determine which property groups are applicable to all selected elements
+  const supportedGroups = useMemo(() => {
+    if (selectedElements.length === 0) return {
+      typography: false,
+      colors: false,
+      background: false,
+      size: false,
+      spacing: false,
+      borders: false,
+      effects: false,
+      layout: false,
+      content: false,
+    };
+    
+    // Initialize with all potential property groups
+    const groups = {
+      typography: true,
+      colors: true,
+      background: true,
+      size: true,
+      spacing: true,
+      borders: true,
+      effects: true,
+      layout: true,
+      content: true,
+    };
+    
+    // Define which element types support which property groups
+    const typographyElements = ['text', 'button', 'link', 'heading', 'paragraph'];
+    const backgroundElements = ['text', 'button', 'link', 'container', 'image', 'group', 'heading', 'paragraph'];
+    const contentElements = ['text', 'button', 'link', 'heading', 'paragraph', 'image'];
+    
+    // Check if all selected elements support typography
+    if (!selectedElements.every(el => typographyElements.includes(el.type))) {
+      groups.typography = false;
+    }
+    
+    // Check if all selected elements support background
+    if (!selectedElements.every(el => backgroundElements.includes(el.type))) {
+      groups.background = false;
+    }
+    
+    // Check if all selected elements have editable content
+    if (!selectedElements.every(el => contentElements.includes(el.type))) {
+      groups.content = false;
+    }
+    
+    return groups;
+  }, [selectedElements]);
+  
   // Get common properties among all selected elements
   const commonProperties = useMemo(() => {
     if (selectedElements.length === 0) return {};
@@ -964,7 +1014,7 @@ export function PropertiesPanel() {
       )}
       
       {/* Typography Controls */}
-      {(allSameType && (firstElement?.type === 'text' || firstElement?.type === 'button' || firstElement?.type === 'link')) && (
+      {supportedGroups.typography && (
         <PropertyGroup title="Typography" icon={<Type className="h-4 w-4" />}>
           <div className="space-y-2">
             <Label htmlFor="font-family">Font Family</Label>
@@ -1056,342 +1106,11 @@ export function PropertiesPanel() {
       )}
       
       {/* Background PropertyGroup */}
-      <PropertyGroup 
-        title="Background" 
-        icon={<PaintBucket className="h-4 w-4" />}
-        className={(!commonProperties.styles?.backgroundColor && !commonProperties.styles?.backgroundImage && firstElement?.type !== 'image') ? "property-group-no-content" : ""}
-        action={
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={handleBackgroundColorToggle}
-                >
-                  {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage || firstElement?.type === 'image') ? 
-                    <Minus className="h-4 w-4" /> : 
-                    <Plus className="h-4 w-4" />
-                  }
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage) ? "Remove background" : "Add background"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        }
-      >
-        {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage || firstElement?.type === 'image') && (
-          <div className="property-group-content">
-            <div className="space-y-2">
-              <Label htmlFor="background-image">Image</Label>
-              <ImageInput 
-                value={
-                  firstElement?.type === 'image' 
-                    ? (commonProperties.attributes?.src ? `url(${commonProperties.attributes?.src})` : '') 
-                    : (commonProperties.styles?.backgroundImage || '')
-                }
-                onChange={(value) => {
-                  // Extract the URL from the value (removing url() wrapper)
-                  const url = value.replace(/^url\(['"]?|['"]?\)$/g, '');
-                  
-                  if (firstElement?.type === 'image') {
-                    handleAttributeChange('src', url);
-                  } else {
-                    handleStyleChange('backgroundImage', value);
-                  }
-                }}
-                onFitChange={(value) => {
-                  if (firstElement?.type === 'image') {
-                    handleStyleChange('objectFit', value);
-                  } else {
-                    handleStyleChange('backgroundSize', value);
-                  }
-                }}
-                onAltChange={(value) => {
-                  if (firstElement?.type === 'image') {
-                    handleAttributeChange('alt', value);
-                  } else {
-                    handleStyleChange('backgroundImageAlt', value);
-                  }
-                }}
-                fitValue={
-                  firstElement?.type === 'image' 
-                    ? commonProperties.styles?.objectFit as string || 'cover'
-                    : commonProperties.styles?.backgroundSize as string || 'cover'
-                }
-                altText={
-                  firstElement?.type === 'image' 
-                    ? commonProperties.attributes?.alt || ''
-                    : commonProperties.styles?.backgroundImageAlt as string || ''
-                }
-                folder="brand-photos"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="background-color">Color</Label>
-              <ColorPicker
-                value={commonProperties.styles?.backgroundColor || ''}
-                onChange={(value) => handleStyleChange('backgroundColor', value)}
-                placeholder={firstElement?.type === 'button' ? 'var(--primary)' : 'transparent'}
-              />
-            </div>
-          </div>
-        )}
-      </PropertyGroup>
-      
-      {/* Size Controls */}
-      <PropertyGroup title="Size" icon={<Maximize className="h-4 w-4" />}>
-        <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-2">
-          <Label>Width</Label>
-          <NumericInput 
-            value={commonProperties.styles?.width || 'auto'}
-            onChange={(value) => handleStyleChange('width', value)}
-            placeholder="auto"
-            className="w-full"
-            max={2000}
-            allowAuto={true}
-            enableUnitToggle={true}
-          />
-        </div>
-        
-          <div className="flex flex-col gap-2">
-          <Label>Height</Label>
-          <NumericInput 
-            value={commonProperties.styles?.height || 'auto'}
-            onChange={(value) => handleStyleChange('height', value)}
-            placeholder="auto"
-            className="w-full"
-            max={2000}
-            allowAuto={true}
-            enableUnitToggle={true}
-          />
-          </div>
-        </div>
-      </PropertyGroup>
-      
-      {/* Spacing Controls */}
-      <PropertyGroup 
-        title="Spacing" 
-        icon={<Box className="h-4 w-4" />}
-        action={
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={() => setExpandedPadding(!expandedPadding)}
-                >
-                  {expandedPadding ? 
-                    <SlidersHorizontal className="h-4 w-4" /> : 
-                    <SlidersVertical className="h-4 w-4" />
-                  }
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {expandedPadding ? "Simplify padding controls" : "Expand padding controls"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        }
-      >
-        {!expandedPadding ? (
-          // Simple padding mode
-          <div className="space-y-2">
-            <Label>Padding</Label>
-            <div className="flex items-center gap-2">
-              <Slider 
-                value={[parseInt(commonProperties.styles?.padding?.toString().split(' ')[0]?.replace(/px|%/g, '') || '0')]} 
-                min={0}
-                max={64} 
-                step={4} 
-                className="flex-1"
-                onValueChange={(value: number[]) => {
-                  const paddingValue = value[0];
-                  // Get current unit from the padding value or default to px
-                  const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
-                  
-                  // For buttons, use paddingValue for top/bottom and double it for left/right
-                  if (firstElement?.type === 'button') {
-                    handleStyleChange('padding', `${paddingValue}${unit} ${paddingValue * 2}${unit}`);
-                  } else {
-                    handleStyleChange('padding', `${paddingValue}${unit}`);
-                  }
-                }}
-              />
-              <NumericInput 
-                className="w-24" 
-                value={firstElement?.type === 'button' 
-                  ? commonProperties.styles?.padding?.toString().split(' ')[0] || '0px'
-                  : commonProperties.styles?.padding || '0px'
-                } 
-                onChange={(value) => {
-                  // Extract the unit from the new value
-                  const unit = value.includes('%') ? '%' : 'px';
-                  const numValue = parseInt(value);
-                  
-                  if (firstElement?.type === 'button') {
-                    // Double the numeric value for left/right padding
-                    handleStyleChange('padding', `${numValue}${unit} ${numValue * 2}${unit}`);
-                  } else {
-                    handleStyleChange('padding', value);
-                  }
-                }} 
-              />
-            </div>
-          </div>
-        ) : (
-          // Advanced padding mode with individual controls for each side
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Top padding */}
-              <div className="space-y-2">
-                <Label>Top</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getPaddingValue('top').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={64} 
-                    step={4} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const paddingValue = value[0];
-                      // Get current unit from the padding value or default to px
-                      const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
-                      handlePaddingChange(`${paddingValue}${unit}`, 'top');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getPaddingValue('top').toString() || '0px'} 
-                    onChange={(value) => handlePaddingChange(value, 'top')} 
-                  />
-                </div>
-              </div>
-              
-              {/* Right padding */}
-              <div className="space-y-2">
-                <Label>Right</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getPaddingValue('right').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={64} 
-                    step={4} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const paddingValue = value[0];
-                      // Get current unit from the padding value or default to px
-                      const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
-                      handlePaddingChange(`${paddingValue}${unit}`, 'right');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getPaddingValue('right').toString() || '0px'} 
-                    onChange={(value) => handlePaddingChange(value, 'right')} 
-                  />
-                </div>
-              </div>
-              
-              {/* Bottom padding */}
-              <div className="space-y-2">
-                <Label>Bottom</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getPaddingValue('bottom').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={64} 
-                    step={4} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const paddingValue = value[0];
-                      // Get current unit from the padding value or default to px
-                      const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
-                      handlePaddingChange(`${paddingValue}${unit}`, 'bottom');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getPaddingValue('bottom').toString() || '0px'} 
-                    onChange={(value) => handlePaddingChange(value, 'bottom')} 
-                  />
-                </div>
-              </div>
-              
-              {/* Left padding */}
-              <div className="space-y-2">
-                <Label>Left</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getPaddingValue('left').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={64} 
-                    step={4} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const paddingValue = value[0];
-                      // Get current unit from the padding value or default to px
-                      const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
-                      handlePaddingChange(`${paddingValue}${unit}`, 'left');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getPaddingValue('left').toString() || '0px'} 
-                    onChange={(value) => handlePaddingChange(value, 'left')} 
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </PropertyGroup>
-      
-      {/* Gap PropertyGroup - only show for group elements */}
-      {firstElement?.isGroup && (
-        <PropertyGroup title="Gap" icon={<ArrowLeftRight className="h-4 w-4" />}>
-          <div className="space-y-2">
-            <Label htmlFor="gap">Gap</Label>
-            <div className="flex items-center gap-2">
-              <Slider
-                id="gap-slider"
-                min={0}
-                max={48}
-                step={4}
-                value={[parseInt(firstElement.layout?.gap?.replace('px', '') || '0')]}
-                className="flex-1"
-                onValueChange={(value) => {
-                  // Get current unit from the gap value or default to px
-                  const unit = firstElement.layout?.gap?.includes('%') ? '%' : 'px';
-                  handleLayoutChange('gap', `${value[0]}${unit}`);
-                }}
-              />
-              <NumericInput 
-                id="gap"
-                className="w-20"
-                value={firstElement.layout?.gap || '0px'}
-                onChange={(value) => handleLayoutChange('gap', value)}
-                placeholder="8px"
-                enableUnitToggle={true}
-              />
-            </div>
-          </div>
-        </PropertyGroup>
-      )}
-      
-      {/* Layout Controls - only show for group elements */}
-      {firstElement?.isGroup && (
+      {supportedGroups.background && (
         <PropertyGroup 
-          title="Layout" 
-          icon={<Layout className="h-4 w-4" />}
-          className={layoutVisible ? "" : "property-group-no-content"}
+          title="Background" 
+          icon={<PaintBucket className="h-4 w-4" />}
+          className={(!commonProperties.styles?.backgroundColor && !commonProperties.styles?.backgroundImage && firstElement?.type !== 'image') ? "property-group-no-content" : ""}
           action={
             <TooltipProvider>
               <Tooltip>
@@ -1400,209 +1119,457 @@ export function PropertiesPanel() {
                     variant="ghost" 
                     size="icon" 
                     className="h-6 w-6" 
-                    onClick={() => setLayoutVisible(!layoutVisible)}
+                    onClick={handleBackgroundColorToggle}
                   >
-                    {layoutVisible ? 
+                    {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage || firstElement?.type === 'image') ? 
                       <Minus className="h-4 w-4" /> : 
                       <Plus className="h-4 w-4" />
                     }
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {layoutVisible ? "Hide layout options" : "Show layout options"}
+                  {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage) ? "Remove background" : "Add background"}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           }
         >
-          {layoutVisible && (
-            <>
+          {(commonProperties.styles?.backgroundColor || commonProperties.styles?.backgroundImage || firstElement?.type === 'image') && (
+            <div className="property-group-content">
               <div className="space-y-2">
-                <Label htmlFor="direction">Direction</Label>
-                <FlexDirectionButtonGroup
-                  value={firstElement.layout?.direction || 'row'}
-                  onChange={(value) => handleLayoutChange('direction', value)}
+                <Label htmlFor="background-image">Image</Label>
+                <ImageInput 
+                  value={
+                    firstElement?.type === 'image' 
+                      ? (commonProperties.attributes?.src ? `url(${commonProperties.attributes?.src})` : '') 
+                      : (commonProperties.styles?.backgroundImage || '')
+                  }
+                  onChange={(value) => {
+                    // Extract the URL from the value (removing url() wrapper)
+                    const url = value.replace(/^url\(['"]?|['"]?\)$/g, '');
+                    
+                    if (firstElement?.type === 'image') {
+                      handleAttributeChange('src', url);
+                    } else {
+                      handleStyleChange('backgroundImage', value);
+                    }
+                  }}
+                  onFitChange={(value) => {
+                    if (firstElement?.type === 'image') {
+                      handleStyleChange('objectFit', value);
+                    } else {
+                      handleStyleChange('backgroundSize', value);
+                    }
+                  }}
+                  onAltChange={(value) => {
+                    if (firstElement?.type === 'image') {
+                      handleAttributeChange('alt', value);
+                    } else {
+                      handleStyleChange('backgroundImageAlt', value);
+                    }
+                  }}
+                  fitValue={
+                    firstElement?.type === 'image' 
+                      ? commonProperties.styles?.objectFit as string || 'cover'
+                      : commonProperties.styles?.backgroundSize as string || 'cover'
+                  }
+                  altText={
+                    firstElement?.type === 'image' 
+                      ? commonProperties.attributes?.alt || ''
+                      : commonProperties.styles?.backgroundImageAlt as string || ''
+                  }
+                  folder="brand-photos"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="justifyContent">Vertical Anchor</Label>
-                <JustifyContentButtonGroup
-                  value={firstElement.layout?.justifyContent || 'flex-start'}
-                  onChange={(value) => handleLayoutChange('justifyContent', value)}
+                <Label htmlFor="background-color">Color</Label>
+                <ColorPicker
+                  value={commonProperties.styles?.backgroundColor || ''}
+                  onChange={(value) => handleStyleChange('backgroundColor', value)}
+                  placeholder={firstElement?.type === 'button' ? 'var(--primary)' : 'transparent'}
                 />
               </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="alignItems">Horizontal Anchor</Label>
-                <AlignItemsButtonGroup
-                  value={firstElement.layout?.alignItems || 'center'}
-                  onChange={(value) => handleLayoutChange('alignItems', value)}
-                />
-              </div>
-            </>
+            </div>
           )}
         </PropertyGroup>
       )}
       
-      {/* Corners PropertyGroup */}
-      <PropertyGroup 
-        title="Corners" 
-        icon={<BoxSelect className="h-4 w-4" />}
-        action={
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={() => setExpandedCorners(!expandedCorners)}
-                >
-                  {expandedCorners ? 
-                    <SlidersHorizontal className="h-4 w-4" /> : 
-                    <SlidersVertical className="h-4 w-4" />
-                  }
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {expandedCorners ? "Simplify corner controls" : "Expand corner controls"}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        }
-      >
-        {!expandedCorners ? (
-          // Simple border radius mode
-          <div className="space-y-2">
-            <Label>Border Radius</Label>
-            <div className="flex items-center gap-2">
-              <Slider 
-                value={[parseInt(commonProperties.styles?.borderRadius?.toString().replace(/px|%/g, '') || '0')]} 
-                min={0}
-                max={32} 
-                step={2} 
-                className="flex-1"
-                onValueChange={(value: number[]) => {
-                  // Get current unit from the borderRadius value or default to px
-                  const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
-                  handleBorderRadiusChange(`${value[0]}${unit}`);
-                }}
-              />
-              <NumericInput 
-                className="w-24" 
-                value={commonProperties.styles?.borderRadius || '0px'} 
-                onChange={(value) => handleBorderRadiusChange(value)} 
-              />
+      {/* Size Controls */}
+      {supportedGroups.size && (
+        <PropertyGroup title="Size" icon={<Maximize className="h-4 w-4" />}>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-2">
+            <Label>Width</Label>
+            <NumericInput 
+              value={commonProperties.styles?.width || 'auto'}
+              onChange={(value) => handleStyleChange('width', value)}
+              placeholder="auto"
+              className="w-full"
+              max={2000}
+              allowAuto={true}
+              enableUnitToggle={true}
+            />
+          </div>
+          
+            <div className="flex flex-col gap-2">
+            <Label>Height</Label>
+            <NumericInput 
+              value={commonProperties.styles?.height || 'auto'}
+              onChange={(value) => handleStyleChange('height', value)}
+              placeholder="auto"
+              className="w-full"
+              max={2000}
+              allowAuto={true}
+              enableUnitToggle={true}
+            />
             </div>
           </div>
-        ) : (
-          // Advanced border radius mode with individual controls for each corner
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {/* Top Left corner */}
-              <div className="space-y-2">
-                <Label>Top Left</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getBorderRadiusValue('topLeft').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={32} 
-                    step={2} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const radiusValue = value[0];
-                      // Get current unit from the radius value or default to px
-                      const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
-                      handleBorderRadiusChange(`${radiusValue}${unit}`, 'topLeft');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getBorderRadiusValue('topLeft').toString() || '0px'} 
-                    onChange={(value) => handleBorderRadiusChange(value, 'topLeft')} 
-                  />
-                </div>
+        </PropertyGroup>
+      )}
+      
+      {/* Spacing Controls */}
+      {supportedGroups.spacing && (
+        <PropertyGroup 
+          title="Spacing" 
+          icon={<Box className="h-4 w-4" />}
+          action={
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    onClick={() => setExpandedPadding(!expandedPadding)}
+                  >
+                    {expandedPadding ? 
+                      <SlidersHorizontal className="h-4 w-4" /> : 
+                      <SlidersVertical className="h-4 w-4" />
+                    }
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {expandedPadding ? "Simplify padding controls" : "Expand padding controls"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
+        >
+          {!expandedPadding ? (
+            // Simple padding mode
+            <div className="space-y-2">
+              <Label>Padding</Label>
+              <div className="flex items-center gap-2">
+                <Slider 
+                  value={[parseInt(commonProperties.styles?.padding?.toString().split(' ')[0]?.replace(/px|%/g, '') || '0')]} 
+                  min={0}
+                  max={64} 
+                  step={4} 
+                  className="flex-1"
+                  onValueChange={(value: number[]) => {
+                    const paddingValue = value[0];
+                    // Get current unit from the padding value or default to px
+                    const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
+                    
+                    // For buttons, use paddingValue for top/bottom and double it for left/right
+                    if (firstElement?.type === 'button') {
+                      handleStyleChange('padding', `${paddingValue}${unit} ${paddingValue * 2}${unit}`);
+                    } else {
+                      handleStyleChange('padding', `${paddingValue}${unit}`);
+                    }
+                  }}
+                />
+                <NumericInput 
+                  className="w-24" 
+                  value={firstElement?.type === 'button' 
+                    ? commonProperties.styles?.padding?.toString().split(' ')[0] || '0px'
+                    : commonProperties.styles?.padding || '0px'
+                  } 
+                  onChange={(value) => {
+                    // Extract the unit from the new value
+                    const unit = value.includes('%') ? '%' : 'px';
+                    const numValue = parseInt(value);
+                    
+                    if (firstElement?.type === 'button') {
+                      // Double the numeric value for left/right padding
+                      handleStyleChange('padding', `${numValue}${unit} ${numValue * 2}${unit}`);
+                    } else {
+                      handleStyleChange('padding', value);
+                    }
+                  }} 
+                />
               </div>
-              
-              {/* Top Right corner */}
-              <div className="space-y-2">
-                <Label>Top Right</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getBorderRadiusValue('topRight').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={32} 
-                    step={2} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const radiusValue = value[0];
-                      // Get current unit from the radius value or default to px
-                      const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
-                      handleBorderRadiusChange(`${radiusValue}${unit}`, 'topRight');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getBorderRadiusValue('topRight').toString() || '0px'} 
-                    onChange={(value) => handleBorderRadiusChange(value, 'topRight')} 
-                  />
+            </div>
+          ) : (
+            // Advanced padding mode with individual controls for each side
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Top padding */}
+                <div className="space-y-2">
+                  <Label>Top</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getPaddingValue('top').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={64} 
+                      step={4} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const paddingValue = value[0];
+                        // Get current unit from the padding value or default to px
+                        const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
+                        handlePaddingChange(`${paddingValue}${unit}`, 'top');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getPaddingValue('top').toString() || '0px'} 
+                      onChange={(value) => handlePaddingChange(value, 'top')} 
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              {/* Bottom Right corner */}
-              <div className="space-y-2">
-                <Label>Bottom Right</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getBorderRadiusValue('bottomRight').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={32} 
-                    step={2} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const radiusValue = value[0];
-                      // Get current unit from the radius value or default to px
-                      const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
-                      handleBorderRadiusChange(`${radiusValue}${unit}`, 'bottomRight');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getBorderRadiusValue('bottomRight').toString() || '0px'} 
-                    onChange={(value) => handleBorderRadiusChange(value, 'bottomRight')} 
-                  />
+                
+                {/* Right padding */}
+                <div className="space-y-2">
+                  <Label>Right</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getPaddingValue('right').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={64} 
+                      step={4} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const paddingValue = value[0];
+                        // Get current unit from the padding value or default to px
+                        const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
+                        handlePaddingChange(`${paddingValue}${unit}`, 'right');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getPaddingValue('right').toString() || '0px'} 
+                      onChange={(value) => handlePaddingChange(value, 'right')} 
+                    />
+                  </div>
                 </div>
-              </div>
-              
-              {/* Bottom Left corner */}
-              <div className="space-y-2">
-                <Label>Bottom Left</Label>
-                <div className="flex items-center gap-2">
-                  <Slider 
-                    value={[parseInt(getBorderRadiusValue('bottomLeft').toString().replace(/px|%/g, '') || '0')]} 
-                    min={0}
-                    max={32} 
-                    step={2} 
-                    className="flex-1"
-                    onValueChange={(value: number[]) => {
-                      const radiusValue = value[0];
-                      // Get current unit from the radius value or default to px
-                      const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
-                      handleBorderRadiusChange(`${radiusValue}${unit}`, 'bottomLeft');
-                    }}
-                  />
-                  <NumericInput 
-                    className="w-20" 
-                    value={getBorderRadiusValue('bottomLeft').toString() || '0px'} 
-                    onChange={(value) => handleBorderRadiusChange(value, 'bottomLeft')} 
-                  />
+                
+                {/* Bottom padding */}
+                <div className="space-y-2">
+                  <Label>Bottom</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getPaddingValue('bottom').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={64} 
+                      step={4} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const paddingValue = value[0];
+                        // Get current unit from the padding value or default to px
+                        const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
+                        handlePaddingChange(`${paddingValue}${unit}`, 'bottom');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getPaddingValue('bottom').toString() || '0px'} 
+                      onChange={(value) => handlePaddingChange(value, 'bottom')} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Left padding */}
+                <div className="space-y-2">
+                  <Label>Left</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getPaddingValue('left').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={64} 
+                      step={4} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const paddingValue = value[0];
+                        // Get current unit from the padding value or default to px
+                        const unit = commonProperties.styles?.padding?.toString().includes('%') ? '%' : 'px';
+                        handlePaddingChange(`${paddingValue}${unit}`, 'left');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getPaddingValue('left').toString() || '0px'} 
+                      onChange={(value) => handlePaddingChange(value, 'left')} 
+                    />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        )}
-      </PropertyGroup>
+          )}
+        </PropertyGroup>
+      )}
+      
+      {/* Borders Controls */}
+      {supportedGroups.borders && (
+        <PropertyGroup 
+          title="Corners" 
+          icon={<BoxSelect className="h-4 w-4" />}
+          action={
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="h-6 w-6" 
+                    onClick={() => setExpandedCorners(!expandedCorners)}
+                  >
+                    {expandedCorners ? 
+                      <SlidersHorizontal className="h-4 w-4" /> : 
+                      <SlidersVertical className="h-4 w-4" />
+                    }
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {expandedCorners ? "Simplify corner controls" : "Expand corner controls"}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          }
+        >
+          {!expandedCorners ? (
+            // Simple border radius mode
+            <div className="space-y-2">
+              <Label>Border Radius</Label>
+              <div className="flex items-center gap-2">
+                <Slider 
+                  value={[parseInt(commonProperties.styles?.borderRadius?.toString().replace(/px|%/g, '') || '0')]} 
+                  min={0}
+                  max={32} 
+                  step={2} 
+                  className="flex-1"
+                  onValueChange={(value: number[]) => {
+                    // Get current unit from the borderRadius value or default to px
+                    const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
+                    handleBorderRadiusChange(`${value[0]}${unit}`);
+                  }}
+                />
+                <NumericInput 
+                  className="w-24" 
+                  value={commonProperties.styles?.borderRadius || '0px'} 
+                  onChange={(value) => handleBorderRadiusChange(value)} 
+                />
+              </div>
+            </div>
+          ) : (
+            // Advanced border radius mode with individual controls for each corner
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Top Left corner */}
+                <div className="space-y-2">
+                  <Label>Top Left</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getBorderRadiusValue('topLeft').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={32} 
+                      step={2} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const radiusValue = value[0];
+                        // Get current unit from the radius value or default to px
+                        const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
+                        handleBorderRadiusChange(`${radiusValue}${unit}`, 'topLeft');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getBorderRadiusValue('topLeft').toString() || '0px'} 
+                      onChange={(value) => handleBorderRadiusChange(value, 'topLeft')} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Top Right corner */}
+                <div className="space-y-2">
+                  <Label>Top Right</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getBorderRadiusValue('topRight').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={32} 
+                      step={2} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const radiusValue = value[0];
+                        // Get current unit from the radius value or default to px
+                        const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
+                        handleBorderRadiusChange(`${radiusValue}${unit}`, 'topRight');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getBorderRadiusValue('topRight').toString() || '0px'} 
+                      onChange={(value) => handleBorderRadiusChange(value, 'topRight')} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Bottom Right corner */}
+                <div className="space-y-2">
+                  <Label>Bottom Right</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getBorderRadiusValue('bottomRight').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={32} 
+                      step={2} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const radiusValue = value[0];
+                        // Get current unit from the radius value or default to px
+                        const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
+                        handleBorderRadiusChange(`${radiusValue}${unit}`, 'bottomRight');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getBorderRadiusValue('bottomRight').toString() || '0px'} 
+                      onChange={(value) => handleBorderRadiusChange(value, 'bottomRight')} 
+                    />
+                  </div>
+                </div>
+                
+                {/* Bottom Left corner */}
+                <div className="space-y-2">
+                  <Label>Bottom Left</Label>
+                  <div className="flex items-center gap-2">
+                    <Slider 
+                      value={[parseInt(getBorderRadiusValue('bottomLeft').toString().replace(/px|%/g, '') || '0')]} 
+                      min={0}
+                      max={32} 
+                      step={2} 
+                      className="flex-1"
+                      onValueChange={(value: number[]) => {
+                        const radiusValue = value[0];
+                        // Get current unit from the radius value or default to px
+                        const unit = commonProperties.styles?.borderRadius?.toString().includes('%') ? '%' : 'px';
+                        handleBorderRadiusChange(`${radiusValue}${unit}`, 'bottomLeft');
+                      }}
+                    />
+                    <NumericInput 
+                      className="w-20" 
+                      value={getBorderRadiusValue('bottomLeft').toString() || '0px'} 
+                      onChange={(value) => handleBorderRadiusChange(value, 'bottomLeft')} 
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </PropertyGroup>
+      )}
       
       {/* Drop Shadow Property Group */}
       <PropertyGroup 
@@ -1676,6 +1643,61 @@ export function PropertiesPanel() {
           />
         )}
       </PropertyGroup>
+      
+      {/* Content PropertyGroup */}
+      {supportedGroups.content && (
+        <PropertyGroup title="Content" icon={<Pencil className="h-4 w-4" />}>
+          <div className="space-y-2">
+            <Label htmlFor="content">Text</Label>
+            <Input
+              id="content"
+              value={commonProperties.content || ''}
+              onChange={handleTextChange}
+              placeholder="Enter text"
+            />
+          </div>
+        </PropertyGroup>
+      )}
+      
+      {/* Effects Controls */}
+      {supportedGroups.effects && (
+        <PropertyGroup title="Effects" icon={<Paintbrush className="h-4 w-4" />}>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 gap-4">
+              <DropShadowControl
+                value={{
+                  x: parseInt(commonProperties.styles?.dropShadowX?.toString() || '0'),
+                  y: parseInt(commonProperties.styles?.dropShadowY?.toString() || '0'),
+                  blur: parseInt(commonProperties.styles?.dropShadowBlur?.toString() || '0'),
+                  color: commonProperties.styles?.dropShadowColor?.toString() || 'rgba(0, 0, 0, 0.2)',
+                  enabled: !!commonProperties.styles?.dropShadowColor,
+                }}
+                onChange={(shadow) => {
+                  if (shadow.enabled) {
+                    handleStyleChange('dropShadowX', `${shadow.x}px`);
+                    handleStyleChange('dropShadowY', `${shadow.y}px`);
+                    handleStyleChange('dropShadowBlur', `${shadow.blur}px`);
+                    handleStyleChange('dropShadowColor', shadow.color);
+                  } else {
+                    // If shadow is disabled, remove all shadow properties
+                    selectedElements.forEach(element => {
+                      updateElement(element.id, {
+                        styles: {
+                          ...element.styles,
+                          dropShadowX: undefined,
+                          dropShadowY: undefined,
+                          dropShadowBlur: undefined,
+                          dropShadowColor: undefined,
+                        },
+                      });
+                    });
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </PropertyGroup>
+      )}
     </div>
   );
 } 
