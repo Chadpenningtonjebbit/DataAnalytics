@@ -1249,6 +1249,8 @@ export const useQuizStore = create<QuizState>()(
     const newState = JSON.parse(JSON.stringify(state));
     const newScreen = newState.quiz.screens[quiz.currentScreenIndex];
     let elementRemoved = false;
+    let sectionIdOfRemovedElement: SectionType | null = null;
+    let nextElementToSelect: string | null = null;
     
     // Recursive function to remove an element from nested groups
     const removeElementFromGroup = (group: QuizElement, targetId: string): boolean => {
@@ -1256,6 +1258,28 @@ export const useQuizStore = create<QuizState>()(
       
       // Check if the element is a direct child of this group
       const initialLength = group.children.length;
+      
+      // Find the index of the element before removing it
+      const elementIndex = group.children.findIndex((child: QuizElement) => child.id === targetId);
+      
+      // If the element exists in this group
+      if (elementIndex !== -1) {
+        // Determine the next element to select (after the deleted one, or before if it's the last)
+        if (group.children.length > 1) {
+          const nextIndex = Math.min(elementIndex + 1, group.children.length - 1);
+          // If removing the last item, select the previous one
+          if (elementIndex === group.children.length - 1) {
+            nextElementToSelect = group.children[elementIndex - 1].id;
+          } else {
+            nextElementToSelect = group.children[nextIndex].id;
+          }
+        } else {
+          // If this is the only element in the group, select the group
+          nextElementToSelect = group.id;
+        }
+      }
+      
+      // Remove the element
       group.children = group.children.filter((child: QuizElement) => child.id !== targetId);
       
       if (group.children.length < initialLength) {
@@ -1279,6 +1303,29 @@ export const useQuizStore = create<QuizState>()(
       const section = newScreen.sections[sectionKey];
       const initialLength = section.elements.length;
       
+      // Find the index of the element before removing it
+      const elementIndex = section.elements.findIndex((element: QuizElement) => element.id === elementId);
+      
+      // If the element exists in this section
+      if (elementIndex !== -1) {
+        sectionIdOfRemovedElement = sectionKey;
+        
+        // Determine the next element to select (after the deleted one, or before if it's the last)
+        if (section.elements.length > 1) {
+          const nextIndex = Math.min(elementIndex + 1, section.elements.length - 1);
+          // If removing the last item, select the previous one
+          if (elementIndex === section.elements.length - 1) {
+            nextElementToSelect = section.elements[elementIndex - 1].id;
+          } else {
+            nextElementToSelect = section.elements[nextIndex].id;
+          }
+        } else {
+          // If this is the only element in the section, we'll select the section itself
+          nextElementToSelect = null;
+        }
+      }
+      
+      // Remove the element
       section.elements = section.elements.filter((element: QuizElement) => element.id !== elementId);
       
       if (section.elements.length < initialLength) {
@@ -1293,6 +1340,7 @@ export const useQuizStore = create<QuizState>()(
         if (elementRemoved) break;
         
         const section = newScreen.sections[sectionKey];
+        sectionIdOfRemovedElement = sectionKey;
         
         // Check each group in the section
         for (let i = 0; i < section.elements.length; i++) {
@@ -1314,10 +1362,28 @@ export const useQuizStore = create<QuizState>()(
       get().saveToHistory(newState.quiz);
     }
     
-    return { 
-      ...newState,
-      selectedElementIds: state.selectedElementIds.filter(id => id !== elementId)
-    };
+    // Return updated state with proper selection
+    if (nextElementToSelect) {
+      // Select the next element
+      return { 
+        ...newState,
+        selectedElementIds: [nextElementToSelect],
+        selectedSectionId: null
+      };
+    } else if (sectionIdOfRemovedElement) {
+      // Select the section if there's no next element (last element was removed)
+      return { 
+        ...newState,
+        selectedElementIds: [],
+        selectedSectionId: sectionIdOfRemovedElement
+      };
+    } else {
+      // Just clear the selection if we couldn't determine what to select next
+      return { 
+        ...newState,
+        selectedElementIds: state.selectedElementIds.filter(id => id !== elementId)
+      };
+    }
   }),
   
       removeSelectedElements: () => set((state) => {
@@ -1329,6 +1395,10 @@ export const useQuizStore = create<QuizState>()(
         // Create a deep copy of the current screen
         const updatedScreen = JSON.parse(JSON.stringify(currentScreen));
         
+        // Track which section contains the deleted elements
+        let sectionWithRemovedElements: SectionType | null = null;
+        let nextElementToSelect: string | null = null;
+        
         // Remove selected elements from all sections
         for (const sectionKey of Object.keys(updatedScreen.sections) as SectionType[]) {
           const section = updatedScreen.sections[sectionKey];
@@ -1336,6 +1406,40 @@ export const useQuizStore = create<QuizState>()(
           // Function to recursively remove elements from groups
           const removeFromGroup = (group: QuizElement): boolean => {
             if (!group.isGroup || !group.children) return false;
+            
+            // Find the position of the last selected element in this group
+            const selectedIndices = group.children
+              .map((child, index) => selectedElementIds.includes(child.id) ? index : -1)
+              .filter(index => index !== -1);
+            
+            if (selectedIndices.length > 0) {
+              // Get the index of the element after the last selected one
+              const lastSelectedIndex = Math.max(...selectedIndices);
+              
+              // If there's an unselected element after the selections, select it
+              if (lastSelectedIndex < group.children.length - 1) {
+                for (let i = lastSelectedIndex + 1; i < group.children.length; i++) {
+                  if (!selectedElementIds.includes(group.children[i].id)) {
+                    nextElementToSelect = group.children[i].id;
+                    break;
+                  }
+                }
+              } 
+              // If there's an unselected element before the selections, select it
+              else if (lastSelectedIndex === group.children.length - 1) {
+                for (let i = lastSelectedIndex - 1; i >= 0; i--) {
+                  if (!selectedElementIds.includes(group.children[i].id)) {
+                    nextElementToSelect = group.children[i].id;
+                    break;
+                  }
+                }
+              }
+              
+              // If all elements in the group are selected, select the group itself
+              if (!nextElementToSelect && selectedIndices.length === group.children.length) {
+                nextElementToSelect = group.id;
+              }
+            }
             
             // Remove direct children
             const initialLength = group.children.length;
@@ -1355,6 +1459,45 @@ export const useQuizStore = create<QuizState>()(
             
             return removedDirectly || removedFromNested;
           };
+          
+          // Check if any elements in this section will be removed
+          const hasElementsToRemove = section.elements.some((element: QuizElement) => 
+            selectedElementIds.includes(element.id) || 
+            (element.isGroup && element.children && element.children.some((child: QuizElement) => selectedElementIds.includes(child.id)))
+          );
+          
+          if (hasElementsToRemove) {
+            sectionWithRemovedElements = sectionKey;
+            
+            // Find the position of the last selected element in this section
+            const selectedIndices = section.elements
+              .map((element: QuizElement, index: number) => selectedElementIds.includes(element.id) ? index : -1)
+              .filter((index: number) => index !== -1);
+            
+            if (selectedIndices.length > 0) {
+              // Get the index of the element after the last selected one
+              const lastSelectedIndex = Math.max(...selectedIndices);
+              
+              // If there's an element after the selections, select it
+              if (lastSelectedIndex < section.elements.length - 1) {
+                for (let i = lastSelectedIndex + 1; i < section.elements.length; i++) {
+                  if (!selectedElementIds.includes(section.elements[i].id)) {
+                    nextElementToSelect = section.elements[i].id;
+                    break;
+                  }
+                }
+              } 
+              // If there's an element before the selections, select it
+              else if (lastSelectedIndex === section.elements.length - 1) {
+                for (let i = lastSelectedIndex - 1; i >= 0; i--) {
+                  if (!selectedElementIds.includes(section.elements[i].id)) {
+                    nextElementToSelect = section.elements[i].id;
+                    break;
+                  }
+                }
+              }
+            }
+          }
           
           // Remove from direct section elements
           section.elements = section.elements.filter((element: QuizElement) => !selectedElementIds.includes(element.id));
@@ -1380,10 +1523,29 @@ export const useQuizStore = create<QuizState>()(
         // Save to history
         get().saveToHistory(updatedQuiz);
         
-        return { 
-          quiz: updatedQuiz,
-          selectedElementIds: []
-        };
+        // If we have a next element to select, select it
+        if (nextElementToSelect) {
+          return { 
+            quiz: updatedQuiz,
+            selectedElementIds: [nextElementToSelect],
+            selectedSectionId: null
+          };
+        } 
+        // Otherwise if we know which section had elements removed, select it
+        else if (sectionWithRemovedElements) {
+          return { 
+            quiz: updatedQuiz,
+            selectedElementIds: [],
+            selectedSectionId: sectionWithRemovedElements
+          };
+        }
+        // Fallback to clearing the selection
+        else {
+          return { 
+            quiz: updatedQuiz,
+            selectedElementIds: []
+          };
+        }
       }),
       
       moveElement: (elementId: string, targetSectionId: SectionType) => set((state) => {
