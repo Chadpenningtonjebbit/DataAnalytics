@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow
 } from "@/components/ui/table";
+import { toast } from "sonner";
 
 export default function Media() {
   const [activeTab, setActiveTab] = useState('brand-photos');
@@ -143,6 +144,8 @@ export default function Media() {
         }
       })
       .catch(err => console.error("Error refreshing brand photos:", err));
+    
+    toast.success(`${urls.length} brand image${urls.length > 1 ? 's' : ''} uploaded successfully`);
   }, []);
   
   const handleFileUploadComplete = useCallback((urls: string[]) => {
@@ -158,6 +161,8 @@ export default function Media() {
         }
       })
       .catch(err => console.error("Error refreshing product feeds:", err));
+    
+    toast.success(`${urls.length} product file${urls.length > 1 ? 's' : ''} uploaded successfully`);
   }, []);
   
   const removeUploadedImage = (index: number) => {
@@ -182,11 +187,15 @@ export default function Media() {
       .then(res => {
         if (!res.ok) {
           console.error('Failed to delete file from storage');
+          toast.error('Failed to delete image from storage');
           // If deletion fails, don't add back to UI
+        } else {
+          toast.success('Image deleted successfully');
         }
       })
       .catch(err => {
         console.error('Error deleting file:', err);
+        toast.error('Error deleting image');
       });
   };
 
@@ -212,10 +221,14 @@ export default function Media() {
       .then(res => {
         if (!res.ok) {
           console.error('Failed to delete file from storage');
+          toast.error('Failed to delete product file');
+        } else {
+          toast.success('Product file deleted successfully');
         }
       })
       .catch(err => {
         console.error('Error deleting file:', err);
+        toast.error('Error deleting product file');
       });
   };
 
@@ -417,9 +430,12 @@ export default function Media() {
       localStorage.setItem('brandWebsiteUrl', url);
       localStorage.setItem('brandWebsiteSubpages', JSON.stringify(foundSubpages));
       
+      toast.success(`Website scanned successfully. Found ${foundSubpages.length} pages.`);
+      
     } catch (error) {
       console.error('Error scanning website:', error);
       setScanError((error as Error).message || 'Failed to scan website');
+      toast.error((error as Error).message || 'Failed to scan website');
     } finally {
       setIsScanning(false);
       if (scanTimeoutId) {
@@ -455,12 +471,14 @@ export default function Media() {
   const handleBrandNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setBrandName(e.target.value);
     localStorage.setItem('brandName', e.target.value);
+    toast.success('Brand name saved successfully');
   };
   
   // Function to handle OpenAI API key change
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setOpenAIKey(e.target.value);
     localStorage.setItem('brandOpenAIKey', e.target.value);
+    toast.success('API key saved');
   };
   
   // Function to reset website scan
@@ -469,6 +487,7 @@ export default function Media() {
     setHasScanned(false);
     setScanError(null);
     localStorage.removeItem('brandWebsiteSubpages');
+    toast.info('Website content cleared');
   };
   
   // Format content type for display

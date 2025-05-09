@@ -13,7 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Search, Image, Loader2, Upload, Plus } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 interface MediaFile {
   url: string;
@@ -45,7 +45,6 @@ export function MediaPicker({
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const { toast } = useToast();
 
   const loadMediaFiles = async () => {
     setIsLoading(true);
@@ -95,26 +94,14 @@ export function MediaPicker({
       });
 
       if (response.ok) {
-        const data = await response.json();
-        toast({
-          title: "Upload successful",
-          description: "Media file has been uploaded successfully",
-        });
+        toast.success("Media file has been uploaded successfully");
         loadMediaFiles(); // Refresh the list after upload
       } else {
-        toast({
-          title: "Upload failed",
-          description: "There was an error uploading your file",
-          variant: "destructive",
-        });
+        toast.error("There was an error uploading your file");
       }
     } catch (error) {
       console.error("Error uploading file:", error);
-      toast({
-        title: "Upload failed",
-        description: "There was an error uploading your file",
-        variant: "destructive",
-      });
+      toast.error("There was an error uploading your file");
     } finally {
       setIsUploading(false);
       // Reset the file input
