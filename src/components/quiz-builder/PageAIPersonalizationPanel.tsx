@@ -74,8 +74,8 @@ const MENTION_OPTIONS: MentionOption[] = [
   { id: 'behavior.products', label: 'Products Viewed', value: '@ProductsViewed', icon: <ShoppingBag className="h-4 w-4" /> },
   { id: 'behavior.categories', label: 'Categories Viewed', value: '@CategoriesViewed', icon: <Tag className="h-4 w-4" /> },
   { id: 'behavior.lastPurchase', label: 'Last Purchase', value: '@LastPurchase', icon: <ShoppingCart className="h-4 w-4" /> },
-  { id: 'city', label: 'City', value: '@City', icon: <MapPin className="h-4 w-4" /> },
-  { id: 'hobby', label: 'Hobby', value: '@Hobby', icon: <Palette className="h-4 w-4" /> },
+  { id: 'city.location', label: 'City', value: '@City', icon: <MapPin className="h-4 w-4" /> },
+  { id: 'hobby.interest', label: 'Hobby', value: '@Hobby', icon: <Palette className="h-4 w-4" /> },
   { id: 'sport', label: 'Sport', value: '@Sport', icon: <Trophy className="h-4 w-4" /> },
   { id: 'pastPurchases', label: 'Past Purchases', value: '@PastPurchases', icon: <ShoppingBag className="h-4 w-4" /> },
 ];
@@ -252,15 +252,6 @@ export function PageAIPersonalizationPanel() {
 
   return (
     <div className="space-y-0">
-      {apiKeyMissing && (
-        <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-md text-sm flex items-center gap-2 mb-4">
-          <div className="h-2 w-2 rounded-full bg-amber-500"></div>
-          <p className="text-amber-700 dark:text-amber-400">
-            OpenAI API key not found. Please set your API key in Brand Settings to use AI personalization.
-          </p>
-        </div>
-      )}
-      
       {isApplied && (
         <div className="bg-green-500/10 border border-green-500/30 p-4 rounded-md text-sm flex items-center gap-2 mb-4">
           <div className="h-2 w-2 rounded-full bg-green-500"></div>

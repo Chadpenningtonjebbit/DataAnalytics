@@ -11,26 +11,21 @@ import {
 } from "@/components/ui/tooltip";
 
 interface PanelHeaderProps {
-  title: string;
+  title: React.ReactNode;
   onClose?: () => void;
-  color?: string;
   className?: string;
 }
 
 export function PanelHeader({ 
   title, 
   onClose, 
-  color = "#7c3aed", // Default purple color
   className 
 }: PanelHeaderProps) {
   return (
     <div className="flex flex-col">
-      {/* Thin colored strip at very top */}
-      <div className="h-[4px]" style={{ backgroundColor: color }} />
-      
       {/* Header with title and close button */}
       <div className="bg-background flex items-center justify-between px-4 py-3 border-b border-border">
-        <h2 className="text-lg font-medium">{title}</h2>
+        <h2 className="text-m font-bold">{title}</h2>
         
         {onClose && (
           <TooltipProvider>

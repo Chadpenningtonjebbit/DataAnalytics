@@ -114,11 +114,12 @@ export type Quiz = {
 // Theme settings that can be applied globally
 export type ThemeSettings = {
   primaryColor: string; // Used for buttons, active elements, etc.
+  textColor: string; // Default text color for all text elements
   fontFamily: string; // Default font for all text elements
   backgroundColor: string; // Default background for sections
   cornerRadius: string; // Default border radius for elements
   size: 'small' | 'medium' | 'large'; // Size controls for fonts and padding
-}; 
+};
 
 export type QuizListItem = {
   id: string;

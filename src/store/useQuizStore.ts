@@ -24,6 +24,7 @@ const safeClone = <T>(obj: T): T => {
 // Default theme settings
 const defaultTheme: ThemeSettings = {
   primaryColor: '#000000', // black
+  textColor: '#333333', // dark gray
   fontFamily: 'Arial, sans-serif',
   backgroundColor: '#ffffff', // White
   cornerRadius: '4px', // Default corner radius
@@ -34,9 +35,10 @@ const defaultTheme: ThemeSettings = {
 const predefinedThemes: ThemeItem[] = [
   {
     id: 'theme1',
-    name: 'Theme #1',
+    name: 'Midnight Classic',
     settings: {
       primaryColor: '#000000', // Black
+      textColor: '#333333', // dark gray
       fontFamily: 'Arial, sans-serif',
       backgroundColor: '#ffffff', // White
       cornerRadius: '4px', // Default corner radius
@@ -45,9 +47,10 @@ const predefinedThemes: ThemeItem[] = [
   },
   {
     id: 'theme2',
-    name: 'Theme #2',
+    name: 'Ocean Breeze',
     settings: {
       primaryColor: '#0ea5e9', // Sky blue
+      textColor: '#1e293b', // slate 800
       fontFamily: 'Helvetica, sans-serif',
       backgroundColor: '#f0f9ff', // Light blue bg
       cornerRadius: '8px', // More rounded corners
@@ -56,9 +59,10 @@ const predefinedThemes: ThemeItem[] = [
   },
   {
     id: 'theme3',
-    name: 'Theme #3',
+    name: 'Emerald Forest',
     settings: {
       primaryColor: '#10b981', // Emerald green
+      textColor: '#064e3b', // emerald 900
       fontFamily: "'Montserrat', sans-serif",
       backgroundColor: '#ecfdf5', // Light green bg
       cornerRadius: '12px', // Even more rounded corners
@@ -67,9 +71,10 @@ const predefinedThemes: ThemeItem[] = [
   },
   {
     id: 'theme4',
-    name: 'Theme #4',
+    name: 'Royal Lavender',
     settings: {
       primaryColor: '#8b5cf6', // Purple
+      textColor: '#2e1065', // purple 950
       fontFamily: "'Poppins', sans-serif",
       backgroundColor: '#f5f3ff', // Light purple bg
       cornerRadius: '6px', // Medium rounded corners
@@ -78,9 +83,10 @@ const predefinedThemes: ThemeItem[] = [
   },
   {
     id: 'theme5',
-    name: 'Theme #5',
+    name: 'Fiery Ruby',
     settings: {
       primaryColor: '#ef4444', // Red
+      textColor: '#450a0a', // red 950
       fontFamily: "'Roboto', sans-serif",
       backgroundColor: '#fef2f2', // Light red bg
       cornerRadius: '0px', // No rounded corners
@@ -480,6 +486,10 @@ const hasManualStyleOverride = (element: QuizElement, styleKey: string): boolean
       return currentValue !== defaultTheme.cornerRadius;
     }
     
+    if (styleKey === 'color' && ['text', 'link'].includes(element.type)) {
+      return currentValue !== defaultTheme.textColor;
+    }
+    
     if (styleKey === 'fontSize') {
       if (element.type === 'text') {
         return currentValue !== sizeMappings.fontSize.text[defaultTheme.size];
@@ -547,6 +557,12 @@ const getThemedDefaultStyles = (type: ElementType, theme: ThemeSettings): {
   if (['text', 'button', 'link'].includes(type)) {
     defaultStyles.fontFamily = theme.fontFamily;
     themeStyles.push('fontFamily');
+    
+    // Apply text color to text and link elements only, not buttons
+    if (['text', 'link'].includes(type)) {
+      defaultStyles.color = theme.textColor;
+      themeStyles.push('color');
+    }
   }
   
   // Apply font size to text elements
@@ -1073,6 +1089,8 @@ export const useQuizStore = create<QuizState>()(
                   themeValue = currentTheme.fontFamily;
                 } else if (styleKey === 'borderRadius' && ['button', 'image'].includes(element.type)) {
                   themeValue = currentTheme.cornerRadius;
+                } else if (styleKey === 'color' && ['text', 'link'].includes(element.type)) {
+                  themeValue = currentTheme.textColor;
                 } else if (styleKey === 'fontSize') {
                   if (element.type === 'text' && sizeMappings.fontSize.text[currentTheme.size]) {
                     themeValue = sizeMappings.fontSize.text[currentTheme.size];
@@ -2356,6 +2374,10 @@ export const useQuizStore = create<QuizState>()(
               borderRadius: {
                 value: theme.cornerRadius,
                 applyTo: ['button', 'image']
+              },
+              color: {
+                value: theme.textColor,
+                applyTo: ['text', 'link']
               }
             };
             
@@ -2505,6 +2527,10 @@ export const useQuizStore = create<QuizState>()(
                 borderRadius: {
                   value: theme.cornerRadius,
                   applyTo: ['button', 'image']
+                },
+                color: {
+                  value: theme.textColor,
+                  applyTo: ['text', 'link']
                 }
               };
               

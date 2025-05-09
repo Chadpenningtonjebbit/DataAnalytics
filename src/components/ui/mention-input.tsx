@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Textarea } from '@/components/ui/textarea';
 
 // Define the mention option interface
@@ -255,13 +256,13 @@ export function MentionInput({
         {...props}
       />
       
-      {/* Mention menu */}
-      {showMenu && filteredOptions.length > 0 && (
+      {/* Mention menu - render via portal to prevent clipping */}
+      {showMenu && filteredOptions.length > 0 && typeof document !== 'undefined' && createPortal(
         <div 
-          className={`absolute z-50 rounded-md border border-input bg-popover shadow-md mention-menu ${menuClassName}`}
+          className={`fixed rounded-md border border-input bg-popover shadow-md mention-menu ${menuClassName}`}
           style={{
-            top: `${menuPosition.top}px`,
-            left: `${menuPosition.left}px`,
+            top: textareaRef.current ? textareaRef.current.getBoundingClientRect().top + menuPosition.top + window.scrollY : 0,
+            left: textareaRef.current ? textareaRef.current.getBoundingClientRect().left + menuPosition.left + window.scrollX : 0,
             minWidth: '200px',
             boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
             zIndex: 9999
@@ -284,12 +285,12 @@ export function MentionInput({
                 }}
                 type="button" // Explicitly set type to prevent form submission
               >
-                {option.icon}
                 <span>{option.label}</span>
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

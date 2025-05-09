@@ -24,11 +24,9 @@ import {
   HomeIcon,
   LayoutDashboard,
   BarChart,
-  Settings,
   Image as ImageIcon
 } from 'lucide-react';
 import { useTheme } from '@/components/ThemeProvider';
-import { BrandSettingsModal } from '@/components/brand/BrandSettingsModal';
 
 interface AppHeaderProps {
   title?: string;
@@ -48,9 +46,6 @@ export function AppHeader({
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
   const params = useParams();
-  
-  // Brand settings modal state
-  const [brandSettingsOpen, setBrandSettingsOpen] = useState(false);
   
   // Extract quizId from URL if in editor page
   const quizId = pageType === 'editor' && params?.quizId ? params.quizId : null;
@@ -86,7 +81,7 @@ export function AppHeader({
             Analytics
           </Link>
           <Link href="/media" className={`text-sm font-medium hover:text-primary/80 ${pathname === '/media' ? 'text-primary' : 'text-muted-foreground'}`}>
-            Media
+            My Brand
           </Link>
         </div>
       )}
@@ -117,26 +112,6 @@ export function AppHeader({
         
         {rightContent}
         
-        {/* Brand Settings Button */}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-8 w-8" 
-                onClick={() => setBrandSettingsOpen(true)}
-              >
-                <Settings className="h-4 w-4" />
-                <span className="sr-only">Brand Settings</span>
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="bottom">
-              <p>Brand Settings</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-        
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -156,12 +131,6 @@ export function AppHeader({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        
-        {/* Brand Settings Modal */}
-        <BrandSettingsModal 
-          open={brandSettingsOpen} 
-          onOpenChange={setBrandSettingsOpen} 
-        />
       </div>
     </header>
   );

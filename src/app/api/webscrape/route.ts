@@ -24,35 +24,6 @@ export async function POST(request: Request) {
       );
     }
     
-    // Check for known problematic domains that are likely to timeout
-    const problematicDomains = [
-      'asics.com',
-      'nike.com',
-      'adidas.com',
-      'amazon.com',
-      'walmart.com',
-      'target.com',
-      'bestbuy.com',
-      'homedepot.com',
-      'lowes.com',
-      'macys.com',
-      'nordstrom.com'
-    ];
-    
-    const urlObj = new URL(url);
-    const domain = urlObj.hostname.replace(/^www\./, '');
-    
-    // Check if this domain matches any in our problematic list
-    const isProblematicDomain = problematicDomains.some(d => domain.includes(d));
-    
-    if (isProblematicDomain && process.env.VERCEL) {
-      console.log(`[WebScrape] Detected problematic domain: ${domain}`);
-      return NextResponse.json({
-        error: "This website is too complex to scan in the cloud environment. Please try a simpler website.",
-        errorType: "complex_site"
-      }, { status: 422 });
-    }
-    
     console.log(`[WebScrape] Attempting to fetch: ${url}`);
     
     // Set timeout for the fetch request
@@ -141,19 +112,6 @@ export async function POST(request: Request) {
           error: "Received empty or invalid HTML response",
           errorType: "empty_response"
         }, { status: 422 });
-      }
-      
-      // Check if we got a bot protection page instead of actual content
-      if (html.includes('captcha') || 
-          html.includes('security check') || 
-          html.includes('bot protection') || 
-          html.includes('cloudflare') || 
-          html.includes('ddos')) {
-        console.log(`[WebScrape] Bot protection detected`);
-        return NextResponse.json({
-          error: "Website has bot protection - we're being blocked",
-          errorType: "bot_protection"
-        }, { status: 403 });
       }
       
       return NextResponse.json({ html });

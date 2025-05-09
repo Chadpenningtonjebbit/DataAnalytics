@@ -20,6 +20,7 @@ import {
   TableRow
 } from "@/components/ui/table";
 import { toast } from "sonner";
+import { useDebouncedCallback } from '@/hooks/useDebounce';
 
 export default function Media() {
   const [activeTab, setActiveTab] = useState('brand-photos');
@@ -40,17 +41,17 @@ export default function Media() {
   // Website scanner states
   const [websiteUrl, setWebsiteUrl] = useState<string>('');
   const [brandName, setBrandName] = useState<string>('');
+  const [initialBrandName, setInitialBrandName] = useState<string>('');
   const [subpages, setSubpages] = useState<{url: string; title: string; type: string}[]>([]);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanError, setScanError] = useState<string | null>(null);
   const [scanTimeoutId, setScanTimeoutId] = useState<NodeJS.Timeout | null>(null);
-  const [scanProgress, setScanProgress] = useState<string>('');
   const [abortController, setAbortController] = useState<AbortController | null>(null);
   const [hasScanned, setHasScanned] = useState<boolean>(false);
   const [lastScannedUrl, setLastScannedUrl] = useState<string>('');
   
   // API Integration states
-  const [openAIKey, setOpenAIKey] = useState('');
+  const [openAIKey, setOpenAIKey] = useState<string>('');
+  const [initialApiKey, setInitialApiKey] = useState<string>('');
   
   // Fetch saved files on component mount
   useEffect(() => {
@@ -89,9 +90,11 @@ export default function Media() {
     
     const savedBrandName = localStorage.getItem('brandName') || '';
     setBrandName(savedBrandName);
+    setInitialBrandName(savedBrandName);
     
     const savedApiKey = localStorage.getItem('brandOpenAIKey') || '';
     setOpenAIKey(savedApiKey);
+    setInitialApiKey(savedApiKey);
     
     // Load saved subpages if they exist
     const savedSubpages = localStorage.getItem('brandWebsiteSubpages');
@@ -246,16 +249,7 @@ export default function Media() {
     if (!websiteUrl) return;
     
     setIsScanning(true);
-    setScanError(null);
     setSubpages([]);
-    setScanProgress('Connecting to website...');
-    
-    // Set a timeout to show progress messages
-    const timeoutId = setTimeout(() => {
-      setScanProgress('Still scanning... This may take longer for complex websites');
-    }, 5000);
-    
-    setScanTimeoutId(timeoutId);
     
     // Create abort controller for fetch
     const controller = new AbortController();
@@ -263,6 +257,9 @@ export default function Media() {
     
     try {
       const url = validateUrl(websiteUrl);
+      
+      // Show processing toast
+      toast.loading('Scanning website...', {id: 'scan-toast'});
       
       // Use our server-side API endpoint
       const response = await fetch('/api/webscrape', {
@@ -336,7 +333,6 @@ export default function Media() {
         throw new Error(errorMessage);
       }
       
-      setScanProgress('Processing page content...');
       const html = data.html;
       
       // Use a temporary DOM element to parse HTML
@@ -430,11 +426,13 @@ export default function Media() {
       localStorage.setItem('brandWebsiteUrl', url);
       localStorage.setItem('brandWebsiteSubpages', JSON.stringify(foundSubpages));
       
+      // Dismiss loading toast and show success
+      toast.dismiss('scan-toast');
       toast.success(`Website scanned successfully. Found ${foundSubpages.length} pages.`);
       
     } catch (error) {
       console.error('Error scanning website:', error);
-      setScanError((error as Error).message || 'Failed to scan website');
+      toast.dismiss('scan-toast');
       toast.error((error as Error).message || 'Failed to scan website');
     } finally {
       setIsScanning(false);
@@ -458,34 +456,54 @@ export default function Media() {
     }
     
     setIsScanning(false);
-    setScanProgress('');
   };
   
   // Function to handle URL input change
   const handleUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setWebsiteUrl(e.target.value);
-    setScanError(null);
   };
+  
+  // Memoized save functions
+  const saveBrandNameToStorage = useCallback((value: string) => {
+    localStorage.setItem('brandName', value);
+    toast.success('Brand name saved successfully');
+  }, []);
+  
+  const saveApiKeyToStorage = useCallback((value: string) => {
+    localStorage.setItem('brandOpenAIKey', value);
+    toast.success('API key saved');
+  }, []);
+  
+  // Create debounced versions of the save functions
+  const debouncedSaveBrandName = useDebouncedCallback(saveBrandNameToStorage, 1000);
+  const debouncedSaveApiKey = useDebouncedCallback(saveApiKeyToStorage, 1000);
   
   // Function to handle brand name input change
   const handleBrandNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setBrandName(e.target.value);
-    localStorage.setItem('brandName', e.target.value);
-    toast.success('Brand name saved successfully');
+    const value = e.target.value;
+    setBrandName(value);
+    
+    // Only save if value is not empty and has changed
+    if (value !== initialBrandName && value !== '') {
+      debouncedSaveBrandName(value);
+    }
   };
   
   // Function to handle OpenAI API key change
   const handleApiKeyChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setOpenAIKey(e.target.value);
-    localStorage.setItem('brandOpenAIKey', e.target.value);
-    toast.success('API key saved');
+    const value = e.target.value;
+    setOpenAIKey(value);
+    
+    // Only save if value is not empty and has changed
+    if (value !== initialApiKey && value !== '') {
+      debouncedSaveApiKey(value);
+    }
   };
   
   // Function to reset website scan
   const resetSubpages = () => {
     setSubpages([]);
     setHasScanned(false);
-    setScanError(null);
     localStorage.removeItem('brandWebsiteSubpages');
     toast.info('Website content cleared');
   };
@@ -561,16 +579,6 @@ export default function Media() {
                         autoUpload={true}
                         onUploadComplete={handleImageUploadComplete}
                       />
-                      
-                      {imageError && (
-                        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-3 text-sm flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium">Error</p>
-                            <p>{imageError}</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Brand photo gallery */}
@@ -633,16 +641,6 @@ export default function Media() {
                         autoUpload={true}
                         onUploadComplete={handleFileUploadComplete}
                       />
-                      
-                      {error && (
-                        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-3 text-sm flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium">Error</p>
-                            <p>{error}</p>
-                          </div>
-                        </div>
-                      )}
                     </div>
                     
                     {/* Uploaded files list */}
@@ -727,25 +725,6 @@ export default function Media() {
                         </div>
                       </div>
                       
-                      {/* Scanning progress */}
-                      {isScanning && (
-                        <div className="bg-muted p-3 rounded-md text-sm flex items-center gap-2">
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>{scanProgress}</span>
-                        </div>
-                      )}
-                      
-                      {/* Scan error */}
-                      {scanError && (
-                        <div className="bg-destructive/10 border border-destructive/20 text-destructive rounded-md p-3 text-sm flex items-start gap-2">
-                          <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                          <div>
-                            <p className="font-medium">Error</p>
-                            <p>{scanError}</p>
-                          </div>
-                        </div>
-                      )}
-                      
                       {/* Subpages Table */}
                       {subpages.length > 0 && (
                         <div className="mt-4 space-y-3">
@@ -764,7 +743,16 @@ export default function Media() {
                               <TableBody>
                                 {subpages.map((page, index) => (
                                   <TableRow key={index}>
-                                    <TableCell className="font-medium">{page.title}</TableCell>
+                                    <TableCell className="font-medium">
+                                      <a 
+                                        href={page.url} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer"
+                                        className="text-primary hover:underline"
+                                      >
+                                        {page.title}
+                                      </a>
+                                    </TableCell>
                                     <TableCell>{formatType(page.type)}</TableCell>
                                   </TableRow>
                                 ))}
@@ -791,7 +779,6 @@ export default function Media() {
                   <CardContent className="space-y-6">
                     {/* OpenAI API Key */}
                     <div className="space-y-2">
-                      <h3 className="text-sm font-medium mb-3">AI Integration</h3>
                       <Label htmlFor="openai-key">
                         OpenAI API Key
                       </Label>
