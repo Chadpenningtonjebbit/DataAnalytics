@@ -87,6 +87,8 @@ export function AppHeader({
       )}
       
       <div className="flex items-center gap-2">
+        {rightContent}
+        
         {pageType === 'editor' && (
           <>
             <TooltipProvider>
@@ -109,8 +111,6 @@ export function AppHeader({
             </TooltipProvider>
           </>
         )}
-        
-        {rightContent}
         
         <TooltipProvider>
           <Tooltip>

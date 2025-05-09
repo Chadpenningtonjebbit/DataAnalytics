@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { AppHeader } from './AppHeader';
-import { useRouter } from 'next/navigation';
+import { SaveStatus } from './SaveStatus';
 
 export function Header() {
   return (
@@ -10,6 +10,7 @@ export function Header() {
       pageType="editor"
       showBackButton={true}
       backUrl="/dashboard"
+      rightContent={<SaveStatus />}
     />
   );
 } 
