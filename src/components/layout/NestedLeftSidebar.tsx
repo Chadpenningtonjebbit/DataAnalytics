@@ -32,14 +32,20 @@ import {
   PencilLine,
   Trash,
   Code,
-  CloudLightning
+  CloudLightning,
+  CheckCircle,
+  Paintbrush,
+  DiamondPlus,
+  Binary,
+  Sparkles,
+  LayoutGrid,
+  Blocks
 } from 'lucide-react';
 import { DraggableElement } from '@/components/quiz-builder/DraggableElement';
 import { ElementType, SectionType, ThemeItem, ThemeSettings } from '@/types';
 import { useQuizStore } from '@/store/useQuizStore';
 import { v4 as uuidv4 } from 'uuid';
 import { cn } from '@/lib/utils';
-import { NavUser } from '@/components/nav-user';
 import { PropertyGroup } from '@/components/ui/property-group';
 import { Button } from "@/components/ui/button";
 import { PanelHeader } from "@/components/ui/panel-header";
@@ -82,34 +88,53 @@ const allElements = elementCategories.flatMap(category => category.items);
 const SIDEBAR_PANELS = [
   {
     id: "content",
-    label: "Add Content",
-    icon: <Boxes className="h-4 w-4" />
+    label: "Elements",
+    icon: <DiamondPlus className="h-4 w-4" />
+  },
+  {
+    id: "sections",
+    label: "Sections",
+    icon: <Blocks className="h-4 w-4" />
   },
   {
     id: "theme",
     label: "Theme",
-    icon: <Palette className="h-4 w-4" />
+    icon: <Paintbrush className="h-4 w-4" />
   },
   {
     id: "ai",
     label: "AI Personalization",
-    icon: <CloudLightning className="h-4 w-4" />
+    icon: <Sparkles className="h-4 w-4" />
   },
   {
     id: "code",
     label: "Code View",
-    icon: <Code className="h-4 w-4" />
+    icon: <Binary className="h-4 w-4" />
   }
 ];
 
 export function NestedLeftSidebar() {
   // Active sidebar panel
-  const [activePanel, setActivePanel] = useState<string | null>("content");
-  const [isPanelExpanded, setIsPanelExpanded] = useState(true);
+  const [activePanel, setActivePanel] = useState<string | null>(null);
+  const [isPanelExpanded, setIsPanelExpanded] = useState(false);
   const { quiz, toggleSection } = useQuizStore();
   const currentScreen = quiz.screens[quiz.currentScreenIndex];
   const [searchQuery, setSearchQuery] = useState('');
   const panelSizes = usePanelSizes();
+  const [apiKeyMissing, setApiKeyMissing] = useState(false);
+  
+  // Check if API key exists
+  useEffect(() => {
+    const openAIKey = localStorage.getItem('brandOpenAIKey') || '';
+    setApiKeyMissing(!openAIKey);
+  }, []);
+  
+  // Notify parent about collapsed state on initial render
+  useEffect(() => {
+    if ('onLeftPanelCollapsedChange' in panelSizes) {
+      (panelSizes.onLeftPanelCollapsedChange as (collapsed: boolean) => void)(true);
+    }
+  }, []);
   
   // Safe way to call the context function if it exists
   const handlePanelCollapsedChange = (collapsed: boolean) => {
@@ -172,7 +197,7 @@ export function NestedLeftSidebar() {
     <div className="h-full flex flex-row">
       {/* Vertical navigation sidebar - always visible */}
       <div className="h-full w-[52px] border-r flex flex-col flex-shrink-0 bg-background">
-        <div className="flex flex-col items-center py-3 space-y-3 flex-1">
+        <div className="flex flex-col items-center py-2 gap-2 flex-1">
           {SIDEBAR_PANELS.map((panel) => (
             <TooltipProvider key={panel.id}>
               <Tooltip>
@@ -181,39 +206,30 @@ export function NestedLeftSidebar() {
                     className={cn(
                       "w-10 h-10 flex items-center justify-center rounded-md",
                       activePanel === panel.id 
-                        ? panel.id === "theme"
-                          ? "text-white" // Text color for theme
-                          : panel.id === "code"
-                            ? "text-white" // Text color for code
-                            : "text-white" // Text color for content
-                        : "hover:bg-muted"
+                        ? "bg-accent text-accent-foreground"
+                        : "hover:bg-muted",
+                      panel.id === "ai" && apiKeyMissing ? "opacity-50" : ""
                     )}
-                    style={{
-                      backgroundColor: activePanel === panel.id
-                        ? panel.id === "theme"
-                          ? "#7c3aed" // Purple for theme
-                          : panel.id === "code"
-                            ? "#16a34a" // Green for code
-                          : "#3b82f6" // Blue for content
-                        : ""
+                    onClick={() => {
+                      if (panel.id === "ai" && apiKeyMissing) return;
+                      handlePanelClick(panel.id);
                     }}
-                    onClick={() => handlePanelClick(panel.id)}
                     aria-label={panel.label}
+                    disabled={panel.id === "ai" && apiKeyMissing}
                   >
                     {panel.icon}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  {panel.id === effectivePanelType && !isPanelExpanded 
-                    ? `Expand ${panel.label}` 
-                    : panel.label}
+                  {panel.id === "ai" && apiKeyMissing 
+                    ? "OpenAI API key required. Set it in My Brand / Integrations tab."
+                    : panel.id === effectivePanelType && !isPanelExpanded 
+                      ? `Expand ${panel.label}` 
+                      : panel.label}
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
           ))}
-        </div>
-        <div className="mt-auto mb-4">
-          <NavUser />
         </div>
       </div>
       
@@ -225,6 +241,12 @@ export function NestedLeftSidebar() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               filteredElements={filteredElements}
+              onClose={handlePanelClose}
+            />
+          )}
+          
+          {effectivePanelType === "sections" && (
+            <SectionsPanel 
               currentScreen={currentScreen}
               toggleSection={toggleSection}
               onClose={handlePanelClose}
@@ -253,13 +275,81 @@ function ContentPanel({
   searchQuery, 
   setSearchQuery, 
   filteredElements,
-  currentScreen,
-  toggleSection,
   onClose
 }: { 
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   filteredElements: any[];
+  onClose?: () => void;
+}) {
+  return (
+    <div className="h-full flex flex-col left-sidebar overflow-hidden">
+      <PanelHeader 
+        title="Elements" 
+        onClose={onClose}
+      />
+      
+      {/* Panel content */}
+      <div className="flex-1 overflow-auto min-h-0">
+        <div className="p-4">
+          <div className="space-y-4 max-w-full">
+            {/* Search input */}
+            <div className="relative">
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search elements..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8"
+              />
+            </div>
+            
+            {/* Elements grid */}
+            <div className="grid grid-cols-2 gap-2 max-w-full">
+              {filteredElements.map((item) => (
+                <Tooltip key={item.name}>
+                  <TooltipTrigger asChild>
+                    <div>
+                      <DraggableElement 
+                        id={`${item.type}-template-${uuidv4()}`}
+                        type={item.type}
+                        sectionId="body"
+                      >
+                        <Card className="hover:border-primary">
+                          <CardContent className="p-2 flex flex-col items-center justify-center text-center">
+                            {item.icon}
+                            <span className="text-xs mt-1">{item.name}</span>
+                          </CardContent>
+                        </Card>
+                      </DraggableElement>
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Drag to add {item.name.toLowerCase()}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ))}
+            </div>
+            
+            {/* Show message when no results */}
+            {filteredElements.length === 0 && (
+              <div className="text-center py-4 text-muted-foreground">
+                <p>No elements found matching "{searchQuery}"</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Sections panel component
+function SectionsPanel({ 
+  currentScreen,
+  toggleSection,
+  onClose
+}: { 
   currentScreen: any;
   toggleSection: (sectionId: SectionType) => void;
   onClose?: () => void;
@@ -267,115 +357,69 @@ function ContentPanel({
   return (
     <div className="h-full flex flex-col left-sidebar overflow-hidden">
       <PanelHeader 
-        title="Add Content" 
+        title="Sections" 
         onClose={onClose}
-        color="#3b82f6" // Blue
       />
       
       {/* Panel content */}
       <div className="flex-1 overflow-auto min-h-0">
-        <Tabs defaultValue="elements" className="w-full h-full">
-          <div className="px-4 pt-4">
-            <TabsList className="w-full">
-              <TabsTrigger value="elements">Elements</TabsTrigger>
-              <TabsTrigger value="sections">Sections</TabsTrigger>
-            </TabsList>
+        <PropertyGroup title="Layout Structure" icon={<Layout className="h-4 w-4" />}>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Layout className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="header-toggle" className="text-sm">Header</Label>
+              </div>
+              <Switch 
+                id="header-toggle" 
+                checked={currentScreen.sections.header.enabled}
+                onCheckedChange={() => toggleSection('header')}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <AlignJustify className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="body-toggle" className="text-sm">Body</Label>
+              </div>
+              <Switch 
+                id="body-toggle" 
+                checked={currentScreen.sections.body.enabled}
+                disabled={true}
+                onCheckedChange={() => {}}
+              />
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ArrowDown className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="footer-toggle" className="text-sm">Footer</Label>
+              </div>
+              <Switch 
+                id="footer-toggle" 
+                checked={currentScreen.sections.footer.enabled}
+                onCheckedChange={() => toggleSection('footer')}
+              />
+            </div>
           </div>
-          
-          <TabsContent value="elements" className="p-4 mt-0 border-none">
-            <div className="space-y-4 max-w-full">
-              {/* Search input */}
-              <div className="relative">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search elements..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8"
-                />
-              </div>
-              
-              {/* Elements grid */}
-              <div className="grid grid-cols-2 gap-2 max-w-full">
-                {filteredElements.map((item) => (
-                  <Tooltip key={item.name}>
-                    <TooltipTrigger asChild>
-                      <div>
-                        <DraggableElement 
-                          id={`${item.type}-template-${uuidv4()}`}
-                          type={item.type}
-                          sectionId="body"
-                        >
-                          <Card>
-                            <CardContent className="p-2 flex flex-col items-center justify-center text-center">
-                              {item.icon}
-                              <span className="text-xs mt-1">{item.name}</span>
-                            </CardContent>
-                          </Card>
-                        </DraggableElement>
-                      </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="right">
-                      <p>Drag to add {item.name.toLowerCase()}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                ))}
-              </div>
-              
-              {/* Show message when no results */}
-              {filteredElements.length === 0 && (
-                <div className="text-center py-4 text-muted-foreground">
-                  <p>No elements found matching "{searchQuery}"</p>
-                </div>
-              )}
-            </div>
-          </TabsContent>
-          
-          <TabsContent value="sections" className="p-4 mt-0 border-none">
-            <div className="space-y-6 max-w-full">
-              <PropertyGroup title="Layout Structure" icon={<Layout className="h-4 w-4" />}>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Layout className="h-4 w-4 text-muted-foreground" />
-                      <Label htmlFor="header-toggle" className="text-sm">Header</Label>
-                    </div>
-                    <Switch 
-                      id="header-toggle" 
-                      checked={currentScreen.sections.header.enabled}
-                      onCheckedChange={() => toggleSection('header')}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <AlignJustify className="h-4 w-4 text-muted-foreground" />
-                      <Label htmlFor="body-toggle" className="text-sm">Body</Label>
-                    </div>
-                    <Switch 
-                      id="body-toggle" 
-                      checked={currentScreen.sections.body.enabled}
-                      disabled={true}
-                      onCheckedChange={() => {}}
-                    />
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ArrowDown className="h-4 w-4 text-muted-foreground" />
-                      <Label htmlFor="footer-toggle" className="text-sm">Footer</Label>
-                    </div>
-                    <Switch 
-                      id="footer-toggle" 
-                      checked={currentScreen.sections.footer.enabled}
-                      onCheckedChange={() => toggleSection('footer')}
-                    />
-                  </div>
-                </div>
-              </PropertyGroup>
-            </div>
-          </TabsContent>
-        </Tabs>
+        </PropertyGroup>
+      </div>
+    </div>
+  );
+}
+
+// AIPanel component
+function AIPanel({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="h-full flex flex-col left-sidebar overflow-hidden">
+      <PanelHeader 
+        title="AI Personalization" 
+        onClose={onClose}
+      />
+      
+      {/* Panel content */}
+      <div className="flex-1 overflow-auto min-h-0">
+        <PageAIPersonalizationPanel />
       </div>
     </div>
   );
@@ -385,13 +429,29 @@ function ContentPanel({
 function ThemePanel({ onClose }: { onClose: () => void }) {
   // Get the entire store state and ignore TypeScript errors for specific actions
   const { quiz } = useQuizStore();
+  const [editingThemeId, setEditingThemeId] = useState<string | null>(null);
   
   // Create a typesafe version of the store with type assertions
   type UpdateThemeFunction = (themeSettings: any) => void;
   type SwitchThemeFunction = (themeId: string) => void;
   
+  // Function to determine if a color is light or dark
+  const isLightColor = (color: string) => {
+    // Convert hex to RGB
+    const hex = color.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    
+    // Calculate brightness (using relative luminance)
+    const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+    
+    // Return true if color is light
+    return brightness > 128;
+  };
+  
   // Handle color change by directly calling the store
-  const handleColorChange = (colorType: 'primaryColor' | 'backgroundColor', color: string) => {
+  const handleColorChange = (colorType: 'primaryColor' | 'backgroundColor' | 'textColor', color: string) => {
     // Call the function directly on the store with type assertion
     const state = useQuizStore.getState() as any;
     if (state.updateTheme) {
@@ -426,9 +486,28 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
   // Handle theme selection change
   const handleThemeChange = (themeId: string) => {
     const state = useQuizStore.getState() as any;
+    
     if (state.switchTheme) {
+      // Simply call the store's switchTheme function to handle the theme change
+      // This will use the actual theme settings from the store
       state.switchTheme(themeId);
     }
+  };
+
+  // Start editing a theme
+  const handleEditTheme = (e: React.MouseEvent, themeId: string) => {
+    e.stopPropagation(); // Prevent triggering theme selection
+    setEditingThemeId(themeId);
+    
+    // If this is not the active theme, switch to it first
+    if (themeId !== activeThemeId) {
+      handleThemeChange(themeId);
+    }
+  };
+
+  // Exit editing mode
+  const handleBackToThemes = () => {
+    setEditingThemeId(null);
   };
   
   // Get theme settings or use defaults
@@ -465,120 +544,209 @@ function ThemePanel({ onClose }: { onClose: () => void }) {
     { value: "'Poppins', sans-serif", label: 'Poppins' }
   ];
   
+  // Get the theme being edited (if any)
+  const editingTheme = editingThemeId 
+    ? themes.find((t: ThemeItem) => t.id === editingThemeId) 
+    : null;
+  
   return (
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="h-full flex flex-col left-sidebar overflow-hidden">
       <PanelHeader 
-        title="Theme" 
+        title={
+          <div className="flex items-center">
+            {editingThemeId && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-8 w-8 mr-2" 
+                      onClick={handleBackToThemes}
+                      aria-label="Back to themes"
+                    >
+                      <ArrowDown className="h-4 w-4 rotate-90" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>Back to themes</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            <span>{editingThemeId ? `Edit ${editingTheme?.name || 'Theme'}` : 'Theme'}</span>
+          </div>
+        } 
         onClose={onClose} 
-        color="#7c3aed" // Purple
       />
       
       {/* Panel content */}
       <div className="flex-1 overflow-auto min-h-0">
-        {/* Theme Selector */}
-        <PropertyGroup title="Theme Selection" icon={<Palette className="h-4 w-4" />}>
-          <div className="space-y-2">
-            <Label htmlFor="theme-selector" className="text-sm font-medium">
-              Select Theme
-            </Label>
-            <Select onValueChange={handleThemeChange} value={activeThemeId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select a theme" />
-              </SelectTrigger>
-              <SelectContent>
-                {themes.map((t: ThemeItem) => (
-                  <SelectItem key={t.id} value={t.id}>
-                    {t.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        </PropertyGroup>
-
-        <PropertyGroup title="Theme Settings" icon={<Palette className="h-4 w-4" />}>
-          <div className="space-y-4">
-            {/* Primary Color Picker */}
-            <ColorPicker
-              label="Primary Color"
-              value={theme.primaryColor}
-              onChange={(color) => handleColorChange('primaryColor', color)}
-            />
-            
-            {/* Font Family Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="font-family" className="text-sm font-medium">
-                Font Family
-              </Label>
-              <Select onValueChange={handleFontChange} value={theme.fontFamily}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a font" />
-                </SelectTrigger>
-                <SelectContent>
-                  {fontOptions.map(font => (
-                    <SelectItem 
-                      key={font.value} 
-                      value={font.value} 
-                      style={{ fontFamily: font.value }}
+        <div className="space-y-0">
+          {!editingThemeId ? (
+            // Show theme list
+            <PropertyGroup title="Available Themes" icon={<Palette className="h-4 w-4" />}>
+              <div className="space-y-4">
+                {themes.map((theme: ThemeItem) => (
+                  <div 
+                    key={theme.id}
+                    className={cn(
+                      "rounded-md border overflow-hidden cursor-pointer hover:border-primary relative shadow-sm",
+                      activeThemeId === theme.id && "ring-2 ring-primary"
+                    )}
+                    onClick={() => handleThemeChange(theme.id)}
+                  >
+                    <div className="p-4" 
+                      style={{ 
+                        backgroundColor: theme.settings.backgroundColor,
+                        color: theme.settings.textColor,
+                        fontFamily: theme.settings.fontFamily
+                      }}
                     >
-                      {font.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {/* Corner Radius Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="corner-radius" className="text-sm font-medium">
-                Corner Radius
-              </Label>
-              <div className="flex items-center gap-2">
-                <Slider 
-                  value={[parseInt(theme.cornerRadius?.replace(/px|%/g, '') || '0')]} 
-                  min={0}
-                  max={32} 
-                  step={2} 
-                  className="flex-1"
-                  onValueChange={(value: number[]) => {
-                    // Get current unit from the cornerRadius value or default to px
-                    const unit = theme.cornerRadius?.includes('%') ? '%' : 'px';
-                    handleCornerRadiusChange(`${value[0]}${unit}`);
-                  }}
-                />
-                <NumericInput 
-                  className="w-24" 
-                  value={theme.cornerRadius || '0px'} 
-                  onChange={handleCornerRadiusChange} 
-                />
+                      <h4 className="text-md font-bold">
+                        {theme.id === 'theme1' ? 'Midnight Classic' : 
+                         theme.id === 'theme2' ? 'Ocean Breeze' : 
+                         theme.id === 'theme3' ? 'Emerald Forest' : 
+                         theme.id === 'theme4' ? 'Royal Lavender' : 
+                         theme.id === 'theme5' ? 'Fiery Ruby' : 
+                         theme.name}
+                      </h4>
+                      <div className="mt-3 flex items-center space-x-2">
+                        <div 
+                          className="h-6 w-6 shadow-sm" 
+                          style={{ 
+                            backgroundColor: theme.settings.primaryColor,
+                            borderRadius: theme.settings.cornerRadius
+                          }}
+                        />
+                        <div 
+                          className="h-6 w-6 shadow-sm" 
+                          style={{ 
+                            backgroundColor: theme.settings.textColor,
+                            borderRadius: theme.settings.cornerRadius
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Edit button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={(e) => handleEditTheme(e, theme.id)}
+                      aria-label={`Edit ${theme.name}`}
+                    >
+                      <PencilLine className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            </div>
-            
-            {/* Background Color Picker */}
-            <ColorPicker
-              label="Background Color"
-              value={theme.backgroundColor}
-              onChange={(color) => handleColorChange('backgroundColor', color)}
-            />
-            
-            {/* Size Selector */}
-            <div className="space-y-2">
-              <Label htmlFor="element-size" className="text-sm font-medium">
-                Element Size
-              </Label>
-              <Select onValueChange={handleSizeChange} value={theme.size || 'small'}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select element size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="small">Small</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="large">Large</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </PropertyGroup>
+            </PropertyGroup>
+          ) : (
+            // Show theme customization when editing a specific theme
+            <>
+              <PropertyGroup title="Colors" icon={<Palette className="h-4 w-4" />}>
+                <div className="flex flex-col gap-4">
+                  {/* Primary Color Picker */}
+                  <ColorPicker
+                    label="Primary Color"
+                    value={theme.primaryColor}
+                    onChange={(color) => handleColorChange('primaryColor', color)}
+                  />
+                  
+                  {/* Text Color Picker */}
+                  <ColorPicker
+                    label="Text Color"
+                    value={theme.textColor || '#333333'}
+                    onChange={(color) => handleColorChange('textColor', color)}
+                  />
+                  
+                  {/* Background Color Picker */}
+                  <ColorPicker
+                    label="Background Color"
+                    value={theme.backgroundColor}
+                    onChange={(color) => handleColorChange('backgroundColor', color)}
+                  />
+                </div>
+              </PropertyGroup>
+              
+              <PropertyGroup title="Typography" icon={<Type className="h-4 w-4" />}>
+                <div className="flex flex-col gap-4">
+                  {/* Font Family Selector */}
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="font-family" className="text-sm font-medium">
+                      Font Family
+                    </Label>
+                    <Select onValueChange={handleFontChange} value={theme.fontFamily}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select a font" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {fontOptions.map(font => (
+                          <SelectItem 
+                            key={font.value} 
+                            value={font.value} 
+                            style={{ fontFamily: font.value }}
+                          >
+                            {font.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PropertyGroup>
+              
+              <PropertyGroup title="Layout & Sizing" icon={<Layout className="h-4 w-4" />}>
+                <div className="flex flex-col gap-4">
+                  {/* Corner Radius Selector */}
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="corner-radius" className="text-sm font-medium">
+                      Corner Radius
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <Slider 
+                        value={[parseInt(theme.cornerRadius?.replace(/px|%/g, '') || '0')]} 
+                        min={0}
+                        max={32} 
+                        step={2} 
+                        className="flex-1"
+                        onValueChange={(value: number[]) => {
+                          // Get current unit from the cornerRadius value or default to px
+                          const unit = theme.cornerRadius?.includes('%') ? '%' : 'px';
+                          handleCornerRadiusChange(`${value[0]}${unit}`);
+                        }}
+                      />
+                      <NumericInput 
+                        className="w-24" 
+                        value={theme.cornerRadius || '0px'} 
+                        onChange={handleCornerRadiusChange} 
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Size Selector */}
+                  <div className="flex flex-col gap-2">
+                    <Label htmlFor="element-size" className="text-sm font-medium">
+                      Element Size
+                    </Label>
+                    <Select onValueChange={handleSizeChange} value={theme.size || 'small'}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select element size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="small">Small</SelectItem>
+                        <SelectItem value="medium">Medium</SelectItem>
+                        <SelectItem value="large">Large</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </PropertyGroup>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -591,7 +759,6 @@ function CodePanel({ onClose }: { onClose?: () => void }) {
       <PanelHeader 
         title="Code View" 
         onClose={onClose}
-        color="#16a34a" // Green
       />
       
       {/* Panel content */}
@@ -599,24 +766,6 @@ function CodePanel({ onClose }: { onClose?: () => void }) {
         <div className="h-full">
           <CodeEditor />
         </div>
-      </div>
-    </div>
-  );
-}
-
-// AIPanel component
-function AIPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="h-full flex flex-col left-sidebar overflow-hidden">
-      <PanelHeader 
-        title="AI Personalization" 
-        onClose={onClose}
-        color="#8b5cf6" // Purple
-      />
-      
-      {/* Panel content */}
-      <div className="flex-1 overflow-auto min-h-0">
-        <PageAIPersonalizationPanel />
       </div>
     </div>
   );

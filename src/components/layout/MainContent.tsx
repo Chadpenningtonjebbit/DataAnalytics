@@ -157,13 +157,19 @@ export function MainContent() {
   // Handle potential missing property with a boolean check
   const isPanelCollapsed = 'isPanelCollapsed' in panelSizes ? panelSizes.isPanelCollapsed : false;
   
+  // Get selection state to determine if right panel should be shown
+  const hasSelection = selectedElementIds.length > 0 || selectedSectionId !== null;
+  
   // Calculate panel width and positioning dynamically with equal gaps on all sides
   // In Layout, the panels have a 16px gap from edges (4px in the "top-4 left-4" class)
   const sideGap = 16; // 16px matches the Layout's spacing
   // When collapsed, use the actual collapsed width (52px) from ResizablePanel
   const collapsedBarWidth = 52;
   const effectiveLeftPanelSize = isPanelCollapsed ? collapsedBarWidth : leftPanelSize;
-  const panelWidth = `calc(100vw - ${effectiveLeftPanelSize + rightPanelSize + (sideGap * 4)}px)`;
+  
+  // Only include right panel in calculations if it's visible
+  const effectiveRightPanelSize = hasSelection ? rightPanelSize : 0;
+  const panelWidth = `calc(100vw - ${effectiveLeftPanelSize + effectiveRightPanelSize + (sideGap * 4)}px)`;
   const panelLeftPosition = `calc(${effectiveLeftPanelSize}px + ${sideGap * 2}px)`;
   
   // Add zoom state
@@ -504,7 +510,7 @@ export function MainContent() {
       const headerHeight = 48; // Header height is 12 (h-12 = 3rem = 48px)
       
       // Calculate the actual available width, accounting for side panels
-      const actualAvailableWidth = rect.width - contentPadding - effectiveLeftPanelSize - rightPanelSize - (sideGap * 4);
+      const actualAvailableWidth = rect.width - contentPadding - effectiveLeftPanelSize - effectiveRightPanelSize - (sideGap * 4);
       const availHeight = rect.height - contentPadding - bottomPanelTotalHeight - headerHeight;
       
       setAvailableWidth(actualAvailableWidth);
@@ -547,19 +553,19 @@ export function MainContent() {
     return () => {
       window.removeEventListener('resize', updateDimensions);
     };
-  }, [deviceSizes, localViewMode, effectiveLeftPanelSize, rightPanelSize, bottomPanelTotalHeight, zoomLevel, sideGap, isPanelCollapsed]);
+  }, [deviceSizes, localViewMode, effectiveLeftPanelSize, effectiveRightPanelSize, bottomPanelTotalHeight, zoomLevel, sideGap, isPanelCollapsed]);
   
   // Calculate the horizontal offset to center the canvas accounting for unequal panel sizes
   const horizontalOffset = useMemo(() => {
     // Calculate the difference between the left and right panel sizes
     // Use effectiveLeftPanelSize to account for collapsed state
-    const panelDifference = effectiveLeftPanelSize - rightPanelSize;
+    const panelDifference = effectiveLeftPanelSize - effectiveRightPanelSize;
     
     // Return half of the difference to adjust the position
     // If leftPanel is bigger, move canvas right (positive value)
     // If rightPanel is bigger, move canvas left (negative value)
     return panelDifference / 2;
-  }, [effectiveLeftPanelSize, rightPanelSize]);
+  }, [effectiveLeftPanelSize, effectiveRightPanelSize]);
   
   // Get current device size based on view mode
   const currentDeviceSize = deviceSizes[localViewMode];
