@@ -155,7 +155,8 @@ export function AIPersonalizationPanel() {
   }, [eligibleElements, selectedElementIds]);
 
   // Handle AI settings changes
-  const handleAISettingChange = (key: string, value: string) => {
+  const handleAISettingChange = (key: string, value: string | boolean) => {
+    // Update local state
     const newSettings = {
       ...aiSettings,
       [key]: value
@@ -167,14 +168,20 @@ export function AIPersonalizationPanel() {
     const openAIKey = localStorage.getItem('brandOpenAIKey') || '';
     
     // Auto-save settings to all eligible elements with API key
+    const settingsString = JSON.stringify({
+      ...newSettings,
+      openAIKey
+    });
+    
+    console.log(`Applying AI setting ${key}:`, value);
+    console.log('Full settings being applied:', newSettings);
+    
     eligibleElements.forEach(element => {
+      console.log(`Applying AI settings to ${element.type} element:`, element.id);
       updateElement(element.id, {
         attributes: {
           ...element.attributes,
-          aiSettings: JSON.stringify({
-            ...newSettings,
-            openAIKey
-          })
+          aiSettings: settingsString
         }
       });
     });

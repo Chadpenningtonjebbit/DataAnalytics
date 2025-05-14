@@ -37,7 +37,7 @@ export function generateElementHtml(element: QuizElement): string {
   }
   
   // Extract critical visual properties for inline style
-  const inlineStyle: string[] = [];
+  let inlineStyle: string[] = [];
   propertiesToInclude.forEach(prop => {
     if (element.styles?.[prop]) {
       // Convert camelCase to kebab-case for CSS
@@ -124,7 +124,7 @@ export function generateElementHtml(element: QuizElement): string {
   }
   
   // Handle group elements specially
-  if (element.type === 'group' && element.children && element.children.length > 0) {
+  if ((element.type === 'group' || element.type === 'product') && element.children && element.children.length > 0) {
     // Create a div with group styles
     let layoutAttributes = '';
     
@@ -140,8 +140,17 @@ export function generateElementHtml(element: QuizElement): string {
         data-gap="${layout.gap || '0px'}"`;
         
       // Make sure gap is added to inline styles if present
-      if (layout.gap && !element.styles.gap) {
-        inlineStyle.push(`gap: ${layout.gap}`);
+      if (layout.gap) {
+        // Remove any existing gap style
+        inlineStyle = inlineStyle.filter(style => !style.startsWith('gap:'));
+        
+        // Add gap with proper units
+        let gapValue = layout.gap;
+        if ((typeof gapValue === 'number' || /^\d+$/.test(gapValue)) && !gapValue.toString().includes('px')) {
+          gapValue = `${gapValue}px`;
+        }
+        
+        inlineStyle.push(`gap: ${gapValue}`);
       }
     }
     
@@ -159,7 +168,13 @@ export function generateElementHtml(element: QuizElement): string {
     // Update style attribute with new styles
     const updatedStyleAttr = inlineStyle.length > 0 ? ` style="${inlineStyle.join('; ')}"` : '';
     
-    html = `<div id="${element.id}" class="element-group"${layoutAttributes}${updatedStyleAttr}>\n`;
+    // Use appropriate class based on element type
+    const className = element.type === 'product' ? 'product-element' : 'element-group';
+    
+    // Add product-specific data attributes if needed
+    const productAttrs = element.type === 'product' ? ` data-product-id="${element.attributes?.productId || ''}"` : '';
+    
+    html = `<div id="${element.id}" class="${className}"${layoutAttributes}${updatedStyleAttr}${interactionAttrs}${productAttrs}>\n`;
     
     // Process all children elements recursively
     element.children.forEach(childElement => {
@@ -199,6 +214,12 @@ export function generateElementHtml(element: QuizElement): string {
         break
       case 'textarea':
         html = `<textarea id="${element.id}" placeholder="${element.attributes.placeholder || ''}"${styleAttr}>${element.content || ''}</textarea>`
+        break
+      case 'product':
+        // Only used for product elements without children
+        html = `<div id="${element.id}" class="product-element"${styleAttr}${interactionAttrs} data-product-id="${element.attributes?.productId || ''}">
+          <p class="no-product-data">Product preview</p>
+        </div>`
         break
       default:
         html = `<div id="${element.id}"${styleAttr}>${element.content || ''}</div>`
@@ -255,8 +276,8 @@ export function generateElementCss(element: QuizElement): string {
   
   css += '}\n';
   
-  // Handle child elements of group
-  if (element.type === 'group' && element.children && element.children.length > 0) {
+  // Handle child elements of group or product
+  if ((element.type === 'group' || element.type === 'product') && element.children && element.children.length > 0) {
     // Add CSS for each child element, maintaining proper selectors
     element.children.forEach(childElement => {
       // Pass the same sectionId to ensure proper CSS selector hierarchy

@@ -2,6 +2,19 @@ import { ElementType, SectionLayout, FlexDirection, FlexWrap, JustifyContent, Al
 
 type StyleMap = Record<string, string>;
 
+// Define product element default styles
+const productElementStyles: StyleMap = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: '8px',
+  padding: '0px',
+  backgroundColor: 'transparent',
+  borderRadius: '0px',
+  width: '300px',
+  minHeight: '350px',
+  alignItems: 'stretch'
+};
+
 // Default styles for each element type
 const elementStyles: Record<ElementType, StyleMap> = {
   button: {
@@ -24,7 +37,7 @@ const elementStyles: Record<ElementType, StyleMap> = {
     textAlign: 'center'
   },
   image: {
-    width: 'auto',
+    width: '200px',
     height: 'auto',
     objectFit: 'cover',
     border: 'none'
@@ -82,7 +95,8 @@ const elementStyles: Record<ElementType, StyleMap> = {
     border: '0px solid transparent',
     borderRadius: '4px',
     textAlign: 'center'
-  }
+  },
+  product: productElementStyles
 };
 
 // Default styles for grouped elements (different from regular group elements)
@@ -136,6 +150,7 @@ export function getDefaultContentForType(type: ElementType): string {
     case 'checkbox': return 'Checkbox Label';
     case 'radio': return 'Radio Option';
     case 'select': return '<option value="1">Option 1</option><option value="2">Option 2</option>';
+    case 'product': return 'Product';
     default: return '';
   }
 }
@@ -146,7 +161,7 @@ export function getDefaultContentForType(type: ElementType): string {
 export function getDefaultAttributesForType(type: ElementType): Record<string, any> {
   switch (type) {
     case 'image':
-      return { src: 'https://via.placeholder.com/100', alt: 'Image' };
+      return { src: 'https://www.nbmchealth.com/wp-content/uploads/2018/04/default-placeholder.png', alt: 'Image' };
     case 'link':
       return { href: '#', target: '_blank' };
     case 'input':
@@ -159,6 +174,15 @@ export function getDefaultAttributesForType(type: ElementType): Record<string, a
       return { placeholder: 'Enter multiple lines of text...' };
     case 'group':
       return { isGroup: true, children: [] };
+    case 'product':
+      return { 
+        isGroup: true, 
+        children: [],
+        productId: '',
+        productPrice: '$0.00',
+        productTitle: 'Product Title',
+        productDescription: 'Product description goes here.'
+      };
     default:
       return {};
   }

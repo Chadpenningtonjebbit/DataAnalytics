@@ -84,6 +84,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { MediaPicker } from "@/components/ui/media-picker";
 import { ImageInput } from "@/components/ui/image-input";
+import { handleRenameStyleClass, handleDuplicateStyleClass } from '@/lib/styleClassUtils';
 
 export function PropertiesPanel() {
   const { 
@@ -747,35 +748,28 @@ export function PropertiesPanel() {
   const [newClassNameForRename, setNewClassNameForRename] = useState('');
 
   // Function to handle renaming a style class
-  const handleRenameStyleClass = () => {
-    if (!classToRename || !newClassNameForRename.trim()) return;
+  const handleRenameClass = () => {
+    const success = handleRenameStyleClass(
+      classToRename,
+      newClassNameForRename,
+      availableStyleClasses,
+      updateStyleClass
+    );
     
-    // Find the class to rename
-    const classToUpdate = availableStyleClasses.find(c => c.id === classToRename);
-    if (!classToUpdate) return;
-    
-    // Update the class name
-    updateStyleClass(classToRename, {
-      name: newClassNameForRename.trim()
-    });
-    
-    // Close the dialog and reset state
-    setClassToRename(null);
-    setNewClassNameForRename('');
-    setIsRenameDialogOpen(false);
+    if (success) {
+      // Close the dialog and reset state
+      setClassToRename(null);
+      setNewClassNameForRename('');
+      setIsRenameDialogOpen(false);
+    }
   };
   
   // Function to handle duplicating a style class
-  const handleDuplicateStyleClass = (classId: string) => {
-    // Find the class to duplicate
-    const classToDuplicate = availableStyleClasses.find(c => c.id === classId);
-    if (!classToDuplicate) return;
-    
-    // Create a new class with the same properties
-    createStyleClass(
-      `${classToDuplicate.name} (Copy)`,
-      classToDuplicate.elementType,
-      { ...classToDuplicate.styles }
+  const handleDuplicateClass = (classId: string) => {
+    handleDuplicateStyleClass(
+      classId,
+      availableStyleClasses,
+      createStyleClass
     );
   };
 
@@ -855,7 +849,7 @@ export function PropertiesPanel() {
               Cancel
             </Button>
             <Button
-              onClick={handleRenameStyleClass}
+              onClick={handleRenameClass}
               disabled={!newClassNameForRename.trim()}
             >
               Rename
@@ -918,7 +912,7 @@ export function PropertiesPanel() {
                             </DropdownMenuItem>
                             <DropdownMenuItem
                               onClick={() => {
-                                handleDuplicateStyleClass(styleClass.id);
+                                handleDuplicateClass(styleClass.id);
                               }}
                             >
                               <Copy className="mr-2 h-4 w-4" />

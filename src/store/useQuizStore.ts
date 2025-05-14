@@ -797,6 +797,41 @@ export const useQuizStore = create<QuizState>()(
           }
         });
       },
+      
+      // Update specific properties of the quiz
+      updateQuiz: (updates: Partial<Quiz>) => {
+        set(state => {
+          const updatedQuiz = {
+            ...state.quiz,
+            ...updates,
+            lastEdited: new Date().toISOString()
+          };
+          
+          // Save to storage
+          debouncedSaveQuizToStorage(updatedQuiz);
+          
+          // Update quiz list if name changed
+          let updatedQuizList = state.quizList;
+          if (updates.name) {
+            updatedQuizList = state.quizList.map(item => 
+              item.id === updatedQuiz.id 
+                ? { ...item, name: updatedQuiz.name, lastEdited: updatedQuiz.lastEdited || '' } 
+                : item
+            );
+            debouncedSaveQuizListToStorage(updatedQuizList);
+          }
+          
+          return {
+            quiz: updatedQuiz,
+            quizList: updatedQuizList,
+            history: {
+              past: [...state.history.past, state.history.present],
+              present: safeClone(updatedQuiz),
+              future: []
+            }
+          };
+        });
+      },
  
       // Rest of the existing methods...
       // The implementations can stay the same, just need to be included here
@@ -998,6 +1033,182 @@ export const useQuizStore = create<QuizState>()(
         const defaultContent = getDefaultContentForType(type);
         const defaultAttributes = getDefaultAttributesForType(type);
     
+    // Special case for product element - create it as a group with predefined child elements
+    if (type === 'product') {
+      // Create the product group element
+      const productGroupId = uuidv4();
+      const productElement: QuizElement = {
+        id: productGroupId,
+        type: 'product',
+        content: '',
+        styles: defaultStyles,
+        attributes: {
+          ...defaultAttributes,
+          isGroup: 'true'
+        },
+        sectionId,
+        themeStyles,
+        isGroup: true,
+        children: [],
+        layout: {
+          direction: 'column',
+          wrap: 'nowrap',
+          justifyContent: 'flex-start',
+          alignItems: 'stretch',
+          alignContent: 'flex-start',
+          gap: '12px'
+        }
+      };
+      
+      // Create child elements for the product with theme-based styling
+      
+      // 1. Product Image - apply theme settings
+      const { styles: imageStyles, themeStyles: imageThemeStyles } = getThemedDefaultStyles('image', theme);
+      const imageElement: QuizElement = {
+        id: uuidv4(),
+        type: 'image',
+        content: '',
+        styles: {
+          ...imageStyles,
+          width: '100%',
+          height: 'auto',
+          borderRadius: theme.cornerRadius || '8px',
+          aspectRatio: '1',
+          objectFit: 'cover'
+        },
+        attributes: {
+          src: 'https://www.nbmchealth.com/wp-content/uploads/2018/04/default-placeholder.png',
+          alt: 'Product Image'
+        },
+        sectionId,
+        groupId: productGroupId,
+        themeStyles: imageThemeStyles
+      };
+      
+      // 2. Product Title - apply theme settings
+      const { styles: titleStyles, themeStyles: titleThemeStyles } = getThemedDefaultStyles('text', theme);
+      const titleElement: QuizElement = {
+        id: uuidv4(),
+        type: 'text',
+        content: 'Product Title',
+        styles: {
+          ...titleStyles,
+          fontSize: '20px',
+          fontWeight: '600',
+          marginTop: '8px',
+          width: '100%'
+        },
+        attributes: {},
+        sectionId,
+        groupId: productGroupId,
+        themeStyles: titleThemeStyles
+      };
+      
+      // 3. Product Description - apply theme settings
+      const { styles: descStyles, themeStyles: descThemeStyles } = getThemedDefaultStyles('text', theme);
+      const descriptionElement: QuizElement = {
+        id: uuidv4(),
+        type: 'text',
+        content: 'This is a product description that provides details about the product features and benefits.',
+        styles: {
+          ...descStyles,
+          fontSize: '14px',
+          color: '#666666',
+          width: '100%'
+        },
+        attributes: {},
+        sectionId,
+        groupId: productGroupId,
+        themeStyles: descThemeStyles
+      };
+      
+      // 4. Product Price - apply theme settings
+      const { styles: priceStyles, themeStyles: priceThemeStyles } = getThemedDefaultStyles('text', theme);
+      const priceElement: QuizElement = {
+        id: uuidv4(),
+        type: 'text',
+        content: '$99.99',
+        styles: {
+          ...priceStyles,
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#000000',
+          width: '100%'
+        },
+        attributes: {},
+        sectionId,
+        groupId: productGroupId,
+        themeStyles: priceThemeStyles
+      };
+      
+      // 5. Product CTA Button - apply theme settings
+      const { styles: ctaStyles, themeStyles: ctaThemeStyles } = getThemedDefaultStyles('button', theme);
+      const ctaElement: QuizElement = {
+        id: uuidv4(),
+        type: 'button',
+        content: 'Add to Cart',
+        styles: {
+          ...ctaStyles,
+          width: '100%',
+          marginTop: '8px'
+        },
+        attributes: {},
+        sectionId,
+        groupId: productGroupId,
+        themeStyles: ctaThemeStyles
+      };
+      
+      // Add all child elements to the product group
+      productElement.children = [
+        imageElement,
+        titleElement,
+        descriptionElement,
+        priceElement,
+        ctaElement
+      ];
+      
+      // Create a copy of the current screen
+      const currentScreen = { ...state.quiz.screens[targetScreenIndex] };
+      
+      // Add the product element to the specified section
+      const updatedSection = {
+        ...currentScreen.sections[sectionId],
+        elements: [...currentScreen.sections[sectionId].elements, productElement],
+      };
+      
+      // Update the screen with the new section
+      const updatedScreen = {
+        ...currentScreen,
+        sections: {
+          ...currentScreen.sections,
+          [sectionId]: updatedSection
+        }
+      };
+      
+      // Update all screens with the updated one
+      const updatedScreens = state.quiz.screens.map((screen, index) => 
+        index === targetScreenIndex ? updatedScreen : screen
+      );
+      
+      // Create updated quiz state
+      const updatedQuiz = {
+        ...state.quiz,
+        screens: updatedScreens
+      };
+      
+      // Save to history
+      get().saveToHistory(updatedQuiz);
+      
+      // Return updated state with the product group selected
+      return {
+        ...state,
+        quiz: updatedQuiz,
+        selectedElementIds: [productGroupId],
+        selectedSectionId: null
+      };
+    }
+    
+    // Handle regular elements (non-product)
     const newElement: QuizElement = {
       id: uuidv4(),
       type,
@@ -1017,36 +1228,35 @@ export const useQuizStore = create<QuizState>()(
       elements: [...currentScreen.sections[sectionId].elements, newElement],
     };
     
-    // Update the sections in the screen
-    const updatedSections = {
-      ...currentScreen.sections,
-      [sectionId]: updatedSection,
-    };
-    
-    // Create the updated screen
+    // Update the screen with the new section
     const updatedScreen = {
       ...currentScreen,
-      sections: updatedSections,
+      sections: {
+        ...currentScreen.sections,
+        [sectionId]: updatedSection
+      }
     };
     
-    // Update the screens array
-    const updatedScreens = state.quiz.screens.map((screen, index) => {
-      if (index === targetScreenIndex) {
-        return updatedScreen;
-      }
-      return screen;
-    });
+    // Update all screens with the updated one
+    const updatedScreens = state.quiz.screens.map((screen, index) => 
+      index === targetScreenIndex ? updatedScreen : screen
+    );
     
+    // Create updated quiz state
     const updatedQuiz = {
       ...state.quiz,
-      screens: updatedScreens,
+      screens: updatedScreens
     };
     
+    // Save to history
     get().saveToHistory(updatedQuiz);
     
+    // Return updated state with the new element selected
     return {
+      ...state,
       quiz: updatedQuiz,
       selectedElementIds: [newElement.id],
+      selectedSectionId: null
     };
   }),
   
@@ -2495,146 +2705,263 @@ export const useQuizStore = create<QuizState>()(
         
         set({ quiz: updatedQuizWithThemedElements });
         debouncedSaveQuizToStorage(updatedQuizWithThemedElements);
-        get().saveToHistory(updatedQuizWithThemedElements);
-      },
-      
-      applyThemeToAllElements: (quizToUpdate = get().quiz) => {
-        const theme = quizToUpdate.theme || defaultTheme;
-        const updatedQuiz = safeClone(quizToUpdate);
         
-        // Recursive function to update elements in groups
-        const updateElementsRecursively = (elements: QuizElement[]): QuizElement[] => {
-          return elements.map(element => {
-            // Initialize variables at the beginning of the function
-            let updatedStyles = { ...element.styles };
-            let updatedThemeStyles = element.themeStyles ? [...element.themeStyles] : [];
-            let updatedChildren: QuizElement[] | undefined = undefined;
-            
-            // Skip elements with style classes - they use their own styles
-            if (element.styleClass) {
-              // If this is a group, we still need to process its children
-              if (element.isGroup && element.children) {
-                updatedChildren = updateElementsRecursively(element.children);
-              }
+        // Apply the updated theme to all sections (for background colors)
+        get().applyThemeToSections();
+        
+        get().saveToHistory(updatedQuizWithThemedElements);
+        
+        // Find all product elements and update their children when theme changes
+        // This ensures product elements stay in sync with the theme
+        const updateProductElementChildren = (quizToUpdate: Quiz): Quiz => {
+          const updated = safeClone(quizToUpdate);
+        
+          // Process each screen
+          for (const screen of updated.screens) {
+            for (const sectionKey of Object.keys(screen.sections) as SectionType[]) {
+              const section = screen.sections[sectionKey];
               
-              return {
-                ...element,
-                children: updatedChildren || element.children
-              };
-            }
+              // Look for product elements in this section
+              const productElements = section.elements.filter(el => el.type === 'product' && el.isGroup && el.children);
+              
+              if (productElements.length > 0) {
+                // Process each product element
+                for (const productElement of productElements) {
+                  if (productElement.children) {
+                    // Get child element IDs to apply theme to
+                    const childIds = productElement.children.map(child => child.id);
+                    
+                    // Apply theme to each child individually as appropriate for its type
+                    for (const child of productElement.children) {
+                      const { styles: themedStyles, themeStyles: newThemeStyles } = getThemedDefaultStyles(child.type, updated.theme!);
             
-            // Define theme properties to apply based on element type
-            const themeProps: Record<string, { value: string, applyTo: ElementType[] }> = {
-              backgroundColor: { 
-                value: theme.primaryColor, 
-                applyTo: ['button'] 
-              },
-              fontFamily: { 
-                value: theme.fontFamily, 
-                applyTo: ['text', 'button', 'link'] 
-              },
-              borderRadius: {
-                value: theme.cornerRadius,
-                applyTo: ['button', 'image']
-              },
-              color: {
-                value: theme.textColor,
-                applyTo: ['text', 'link']
-              }
-            };
-            
-            // Add font size properties based on theme size
-            if (element.type === 'text' && sizeMappings.fontSize.text[theme.size]) {
-              themeProps.fontSize = {
-                value: sizeMappings.fontSize.text[theme.size],
-                applyTo: ['text']
-              };
-            } else if (element.type === 'button' && sizeMappings.fontSize.button[theme.size]) {
-              themeProps.fontSize = {
-                value: sizeMappings.fontSize.button[theme.size],
-                applyTo: ['button']
-              };
-            } else if (element.type === 'link' && sizeMappings.fontSize.link[theme.size]) {
-              themeProps.fontSize = {
-                value: sizeMappings.fontSize.link[theme.size],
-                applyTo: ['link']
-              };
-            }
-            
-            // Add width for text and button elements based on theme size
-            if (element.type === 'text' && sizeMappings.width.text[theme.size]) {
-              themeProps.width = {
-                value: sizeMappings.width.text[theme.size],
-                applyTo: ['text']
-              };
-            } else if (element.type === 'button' && sizeMappings.width.button[theme.size]) {
-              themeProps.width = {
-                value: sizeMappings.width.button[theme.size],
-                applyTo: ['button']
-              };
-            }
-            
-            // Add padding for buttons based on theme size
-            if (element.type === 'button' && sizeMappings.padding.button[theme.size]) {
-              themeProps.padding = {
-                value: sizeMappings.padding.button[theme.size],
-                applyTo: ['button']
-              };
-            }
-            
-            // Apply each theme property if applicable to this element type and not manually overridden
-            Object.entries(themeProps).forEach(([prop, { value, applyTo }]) => {
-              if (applyTo.includes(element.type) && !hasManualStyleOverride(element, prop)) {
-                updatedStyles[prop] = value;
-                
-                // Add to themeStyles if not already there
-                if (!updatedThemeStyles.includes(prop)) {
-                  updatedThemeStyles.push(prop);
+                      // Preserve certain custom styles while applying theme styles
+                      const preservedStyles: Record<string, string> = {};
+                      const customStyleProps = ['width', 'height', 'marginTop', 'marginBottom', 'aspectRatio', 'objectFit'];
+                      
+                      // Keep custom styling that should be preserved
+                      for (const prop of customStyleProps) {
+                        if (child.styles?.[prop]) {
+                          preservedStyles[prop] = child.styles[prop];
+                        }
+                      }
+                      
+                      // Update child styles with theme styles, preserving custom styles
+                      child.styles = {
+                        ...themedStyles,
+                        ...preservedStyles
+                      };
+                      
+                      // Update theme styles tracking
+                      child.themeStyles = newThemeStyles;
+                    }
+                  }
                 }
               }
-            });
-            
-            // If this is a group, recursively update its children
-            if (element.isGroup && element.children) {
-              updatedChildren = updateElementsRecursively(element.children);
             }
-            
-            return {
-              ...element,
-              styles: updatedStyles,
-              themeStyles: updatedThemeStyles,
-              children: updatedChildren || element.children
-            };
-          });
+          }
+          
+          return updated;
         };
         
-        // Apply theme to all screens
-        updatedQuiz.screens = updatedQuiz.screens.map(screen => {
-          // Update sections in this screen
-          const updatedSections = Object.entries(screen.sections).reduce((acc, [sectionId, section]) => {
-            // Apply theme to section background
-            const updatedSectionStyles = {
-              ...section.styles,
-              backgroundColor: theme.backgroundColor
-            };
-            
-            // Apply theme to elements in this section including nested elements
-            const updatedElements = updateElementsRecursively(section.elements);
-            
-            acc[sectionId as SectionType] = {
-              ...section,
-              styles: updatedSectionStyles,
-              elements: updatedElements
-            };
-            
-            return acc;
-          }, {} as Record<SectionType, QuizSection>);
+        // Update the theme
+        set(state => {
+          // Update theme settings
+          const updatedQuiz = {
+            ...state.quiz,
+            theme: {
+              ...state.quiz.theme,
+              ...themeSettings
+            }
+          };
           
+          // Save the current quiz to local storage
+          const updatedQuizWithThemedElements = get().applyThemeToAllElements(updatedQuiz);
+          debouncedSaveQuizToStorage(updatedQuizWithThemedElements);
+          get().saveToHistory(updatedQuizWithThemedElements);
+          
+          // Update all product elements' children to match theme
+          const updateProductElementChildren = (screens: QuizScreen[]): QuizScreen[] => {
+            // Deep clone to avoid mutations
+            const updatedScreens = JSON.parse(JSON.stringify(screens));
+            
+            // Process each screen
+            for (const screen of updatedScreens) {
+              for (const sectionKey of Object.keys(screen.sections) as SectionType[]) {
+                const section = screen.sections[sectionKey];
+                
+                // Look for product elements in this section
+                for (let i = 0; i < section.elements.length; i++) {
+                  const element = section.elements[i];
+                  
+                  if (element.type === 'product' && element.isGroup && element.children) {
+                    // Apply theme to each child individually based on its type
+                    for (let j = 0; j < element.children.length; j++) {
+                      const child = element.children[j];
+                      const { styles: themedStyles, themeStyles: newThemeStyles } = 
+                        getThemedDefaultStyles(child.type, updatedQuizWithThemedElements.theme!);
+                      
+                      // Preserve certain custom styles while applying theme styles
+                      const preservedStyles: Record<string, string> = {};
+                      const customStyleProps = ['width', 'height', 'marginTop', 'marginBottom', 'aspectRatio', 'objectFit'];
+                      
+                      // Keep custom styling that should be preserved
+                      for (const prop of customStyleProps) {
+                        if (child.styles?.[prop]) {
+                          preservedStyles[prop] = child.styles[prop];
+                        }
+            }
+            
+                      // Update child styles with theme styles, preserving custom styles
+                      element.children[j].styles = {
+                        ...themedStyles,
+                        ...preservedStyles
+                      };
+                      
+                      // Update theme styles tracking
+                      element.children[j].themeStyles = newThemeStyles;
+                    }
+                  }
+                }
+              }
+            }
+            
+            return updatedScreens;
+          };
+          
+          // Apply product element updates
+          const updatedScreens = updateProductElementChildren(updatedQuizWithThemedElements.screens);
+          const finalQuiz = {
+            ...updatedQuizWithThemedElements,
+            screens: updatedScreens
+          };
+          
+          // Return the updated state
+          return { quiz: finalQuiz };
+        });
+      },
+      
+      applyThemeToAllElements: (quizToUpdate?: Quiz): Quiz => {
+        const state = get();
+        const quiz = quizToUpdate || state.quiz;
+        const theme = quiz.theme || defaultTheme;
+        
+        // Create a deep copy of the quiz to avoid mutations
+        const updatedQuiz = safeClone(quiz);
+        
+        // Process each screen
+        for (const screen of updatedQuiz.screens) {
+          // Process each section
+          for (const sectionKey of Object.keys(screen.sections) as SectionType[]) {
+            const section = screen.sections[sectionKey];
+            
+            // Update each element with theme values
+            for (let i = 0; i < section.elements.length; i++) {
+              const element = section.elements[i];
+              
+              // Skip elements that have a style class applied
+              if (element.styleClass) continue;
+              
+              // Update style for this element type
+              const { styles: newStyles, themeStyles: newThemeStyles } = getThemedDefaultStyles(element.type, theme);
+              
+              // Create a new styles object that preserves manual overrides
+              const updatedStyles: Record<string, string> = { ...newStyles };
+                
+              // Preserve manual style overrides
+              for (const [key, value] of Object.entries(element.styles || {})) {
+                // Only keep values that are manually overridden (not from theme)
+                if (!element.themeStyles?.includes(key)) {
+                  updatedStyles[key] = value;
+                }
+              }
+              
+              // Update the element with new styles and theme attributes
+              section.elements[i] = {
+              ...element,
+              styles: updatedStyles,
+                themeStyles: newThemeStyles
+              };
+              
+              // If this is a product element, update its children too
+              if (element.type === 'product' && element.isGroup && element.children) {
+                for (let j = 0; j < element.children.length; j++) {
+                  const child = element.children[j];
+        
+                  // Skip children that have a style class applied
+                  if (child.styleClass) continue;
+                  
+                  // Get themed styles for this child element type
+                  const { styles: childNewStyles, themeStyles: childNewThemeStyles } = 
+                    getThemedDefaultStyles(child.type, theme);
+                  
+                  // Create a new styles object that preserves manual overrides
+                  const childUpdatedStyles: Record<string, string> = { ...childNewStyles };
+                  
+                  // Preserve certain custom styles while applying theme styles
+                  const customStyleProps = ['width', 'height', 'marginTop', 'marginBottom', 'aspectRatio', 'objectFit'];
+                  
+                  // Keep custom styling that should be preserved and manual overrides
+                  for (const [key, value] of Object.entries(child.styles || {})) {
+                    // Keep values from custom props or manual overrides
+                    if (customStyleProps.includes(key) || !child.themeStyles?.includes(key)) {
+                      childUpdatedStyles[key] = value;
+                    }
+                  }
+                  
+                  // Update the child element
+                  section.elements[i].children![j] = {
+                    ...child,
+                    styles: childUpdatedStyles,
+                    themeStyles: childNewThemeStyles
+                  };
+                }
+              }
+              
+              // If this is a group (not a product), apply theme to children recursively
+              if (element.isGroup && element.type === 'group' && element.children) {
+                // Recursive function to update nested elements
+                const updateNestedElements = (elements: QuizElement[]): QuizElement[] => {
+                  return elements.map(el => {
+                    // Skip elements with style class
+                    if (el.styleClass) return el;
+                    
+                    // Get themed styles for this element type
+                    const { styles: nestedNewStyles, themeStyles: nestedNewThemeStyles } = 
+                      getThemedDefaultStyles(el.type, theme);
+                    
+                    // Create a new styles object
+                    const nestedUpdatedStyles: Record<string, string> = { ...nestedNewStyles };
+                    
+                    // Preserve manual overrides
+                    for (const [key, value] of Object.entries(el.styles || {})) {
+                      if (!el.themeStyles?.includes(key)) {
+                        nestedUpdatedStyles[key] = value;
+                      }
+                    }
+                    
+                    // Update nested children if this is a group
+                    let updatedChildren = el.children;
+                    if (el.isGroup && el.children) {
+                      updatedChildren = updateNestedElements(el.children);
+                    }
+                    
+                    // Return updated element
           return {
-            ...screen,
-            sections: updatedSections
+                      ...el,
+                      styles: nestedUpdatedStyles,
+                      themeStyles: nestedNewThemeStyles,
+                      children: updatedChildren
           };
         });
+                };
+                
+                // Update nested elements
+                section.elements[i].children = updateNestedElements(element.children);
+              }
+            }
+          }
+        }
         
         return updatedQuiz;
       },
@@ -2829,6 +3156,10 @@ export const useQuizStore = create<QuizState>()(
           const newQuiz = { ...state.quiz, theme: theme.settings, activeThemeId: themeId };
           // Apply the theme to all elements
           const updatedQuiz = get().applyThemeToAllElements(newQuiz);
+          
+          // Apply the theme to all sections as well
+          setTimeout(() => get().applyThemeToSections(), 0);
+          
           return { quiz: updatedQuiz };
         });
       },

@@ -8,6 +8,7 @@ export type ElementType =
   | 'radio'
   | 'select'
   | 'textarea'
+  | 'product'
   | 'group';
 
 export type ViewMode = 'desktop' | 'tablet' | 'mobile';
@@ -109,6 +110,11 @@ export type Quiz = {
   themes?: ThemeItem[]; // List of saved themes
   activeThemeId?: string; // ID of the active theme
   styleClasses?: StyleClass[]; // Custom style classes
+  productFeed?: {
+    url: string;
+    name: string;
+  }; // Selected product feed for the experience
+  aiSettings?: string; // Experience-wide AI personalization settings
 };
 
 // Theme settings that can be applied globally
@@ -151,6 +157,7 @@ export type QuizState = {
   deleteQuiz: (id: string) => void;
   saveCurrentQuiz: () => void;
   setQuiz: (quiz: Quiz) => void;
+  updateQuiz: (updates: Partial<Quiz>) => void;
   renameQuiz: (id: string, newName: string) => boolean;
   duplicateQuiz: (id: string) => Promise<string | null>;
   

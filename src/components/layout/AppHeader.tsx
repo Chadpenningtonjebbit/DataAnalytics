@@ -34,6 +34,7 @@ interface AppHeaderProps {
   backUrl?: string;
   pageType?: 'dashboard' | 'editor' | 'generic';
   rightContent?: React.ReactNode;
+  centerContent?: React.ReactNode;
 }
 
 export function AppHeader({ 
@@ -41,7 +42,8 @@ export function AppHeader({
   showBackButton = false,
   backUrl = "/dashboard",
   pageType = "generic",
-  rightContent 
+  rightContent,
+  centerContent
 }: AppHeaderProps) {
   const { theme, setTheme } = useTheme();
   const pathname = usePathname();
@@ -83,6 +85,13 @@ export function AppHeader({
           <Link href="/media" className={`text-sm font-medium hover:text-primary/80 ${pathname === '/media' ? 'text-primary' : 'text-muted-foreground'}`}>
             My Brand
           </Link>
+        </div>
+      )}
+      
+      {/* Custom center content */}
+      {centerContent && (
+        <div className="flex items-center absolute left-1/2 -translate-x-1/2">
+          {centerContent}
         </div>
       )}
       

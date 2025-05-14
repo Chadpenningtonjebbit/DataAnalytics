@@ -36,7 +36,8 @@ import {
   RefreshCw,
   Scissors,
   SquareStack,
-  Palette
+  Palette,
+  Boxes
 } from 'lucide-react';
 import {
   Dialog,
@@ -273,6 +274,36 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // Stop propagation to prevent section selection
     
+    // Special handling for product element
+    if (element.type === 'product' && element.isGroup) {
+      // Only select the product container if it's directly clicked
+      // This check ensures clicks on child elements will select those instead
+      const isDirectClick = e.target === e.currentTarget || 
+                          (e.currentTarget as HTMLElement).contains(e.target as HTMLElement) &&
+                          !(e.target as HTMLElement).closest('.element-renderer');
+      
+      if (isDirectClick) {
+        selectElement(element.id);
+      }
+      
+      // Let the click continue to child elements
+      return;
+    }
+    
+    // Special handling for group element (not product)
+    if (element.type === 'group' && element.isGroup) {
+      // Similar behavior but marked specifically as a group
+      const isDirectClick = e.target === e.currentTarget || 
+                          (e.currentTarget as HTMLElement).contains(e.target as HTMLElement) &&
+                          !(e.target as HTMLElement).closest('.element-renderer');
+      
+      if (isDirectClick) {
+        selectElement(element.id);
+      }
+      
+      return;
+    }
+    
     // If this element is in a group and the group is not selected,
     // select the group first
     if (element.groupId && !isParentGroupSelected) {
@@ -375,6 +406,7 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
       case 'radio': return <Radio className="h-3 w-3" />;
       case 'select': return <ListFilter className="h-3 w-3" />;
       case 'textarea': return <AlignLeft className="h-3 w-3" />;
+      case 'product': return <Boxes className="h-3 w-3" />;
       case 'group': return <Group className="h-3 w-3" />;
       default: return <Square className="h-3 w-3" />;
     }
@@ -497,45 +529,92 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
   
   // Render group container with improved hover handling
   const renderGroupContainer = () => {
-    if (element.type !== 'group' || !element.children) return null;
+    // Check if the element is a group and has children
+    if (!element.isGroup || !element.children) return null;
     
-    // Get width and height from styles, defaulting to 100% if not set
-    const width = element.styles?.width || '100%';
-    const height = element.styles?.height || '100%';
-    const padding = element.styles?.padding || '0px';
-    // Use the gap from layout if available, or from styles, or default to '8px'
-    const gap = element.layout?.gap || element.styles?.gap || '8px';
+    // Check if the container should use grid-like layout
+    const isGridLayout = element.layout?.direction === "grid" as any;
     
+    // Special rendering for product element
+    if (element.type === 'product') {
     return (
       <div 
-        className="group-container"
+          id={`element-${element.id}`}
+          className={`element-renderer product-element ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
         style={{
+            ...style,
           display: 'flex',
+            flexDirection: element.layout?.direction || 'column',
+            flexWrap: element.layout?.wrap || 'nowrap',
+            justifyContent: element.layout?.justifyContent || 'flex-start',
+            alignItems: element.layout?.alignItems || 'stretch',
+            alignContent: element.layout?.alignContent || 'flex-start',
+            gap: element.layout?.gap || '12px',
+            pointerEvents: isViewMode ? 'auto' : 'auto',
+            cursor: isViewMode ? 'pointer' : 'default',
+            backgroundImage: element.styles?.backgroundImage,
+            backgroundSize: element.styles?.backgroundImage ? (element.styles?.backgroundSize || 'cover') : undefined,
+            backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
+            backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined,
+            position: 'relative',
+            ...dataAttrs
+          }}
+          onClick={handleClick}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
+          data-element-id={element.id}
+          data-element-type="product"
+          {...dataAttrs}
+        >
+          {element.children.map(childElement => (
+            <ElementRenderer key={childElement.id} element={childElement} />
+          ))}
+          
+          {/* Product overlay when hovered in edit mode */}
+          {!isViewMode && isHovered && !isSelected && (
+            <div className="product-overlay" style={{
+              position: 'absolute',
+              inset: 0,
+              backgroundColor: 'rgba(79, 70, 229, 0.1)',
+              borderRadius: 'inherit',
+              pointerEvents: 'none',
+              border: '1px dashed #4F46E5'
+            }}/>
+          )}
+        </div>
+      );
+    }
+    
+    // Regular group element rendering
+    return (
+      <div
+        id={`element-${element.id}`}
+        className={`element-renderer group-element ${isSelected ? 'selected' : ''} ${isHovered ? 'hovered' : ''}`}
+        style={{
+          ...style,
+          display: isGridLayout ? 'grid' : 'flex',
+          ...(isGridLayout ? {
+            gridTemplateColumns: (element.layout as any)?.gridColumns || 'repeat(2, 1fr)',
+            gridTemplateRows: (element.layout as any)?.gridRows || 'auto',
+            gridGap: element.layout?.gap || '8px',
+          } : {
           flexDirection: element.layout?.direction || 'row',
           flexWrap: element.layout?.wrap || 'wrap',
           justifyContent: element.layout?.justifyContent || 'flex-start',
           alignItems: element.layout?.alignItems || 'center',
           alignContent: element.layout?.alignContent || 'flex-start',
-          gap: gap,
-          width: width,
-          height: height,
-          padding: padding,
+            gap: element.layout?.gap || '8px',
+          }),
+          pointerEvents: isSelected ? 'auto' : 'none',
           position: 'relative',
-          zIndex: 1,
           backgroundImage: element.styles?.backgroundImage,
-          backgroundSize: element.styles?.backgroundImage ? 'cover' : undefined,
+          backgroundSize: element.styles?.backgroundImage ? (element.styles?.backgroundSize || 'cover') : undefined,
           backgroundPosition: element.styles?.backgroundImage ? 'center' : undefined,
           backgroundRepeat: element.styles?.backgroundImage ? 'no-repeat' : undefined,
-          // Set border-width CSS variable for dynamic selection outline positioning
-          ...(element.styles?.border && element.styles.border !== 'none' ? 
-            { '--border-width': element.styles.border.toString().split(' ')[0] } : 
-            { '--border-width': '0px' })
+          ...dataAttrs
         }}
-        onClick={(e) => {
-          if (e.currentTarget === e.target) {
-            e.stopPropagation();
-          }
-        }}
+        onClick={handleClick}
+        onMouseEnter={handleMouseEnter}
         onMouseLeave={(e) => {
           // Ensure hover state is cleared when mouse leaves the group
           setIsHovered(false);
@@ -753,10 +832,10 @@ export function ElementRenderer({ element, isViewMode, onSelectElement }: Elemen
     return {};
   }, [element.type, element.attributes, isEditing]);
   
-  // Inline renderElement function
+  // Render element content
   const renderElementContent = (element: QuizElement) => {
-    // Don't render content for groups, as they just contain other elements
-    if (element.type === 'group') {
+    // Don't render content for groups or products, as they just contain other elements
+    if (element.type === 'group' || element.type === 'product') {
       return null;
     }
     

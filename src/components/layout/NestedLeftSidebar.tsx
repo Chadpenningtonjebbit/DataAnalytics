@@ -39,7 +39,12 @@ import {
   Binary,
   Sparkles,
   LayoutGrid,
-  Blocks
+  Blocks,
+  Database,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+  Loader2
 } from 'lucide-react';
 import { DraggableElement } from '@/components/quiz-builder/DraggableElement';
 import { ElementType, SectionType, ThemeItem, ThemeSettings } from '@/types';
@@ -68,6 +73,9 @@ import { Slider } from "@/components/ui/slider";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { CodeEditor } from '@/components/quiz-builder/CodeEditor';
 import { PageAIPersonalizationPanel } from '@/components/quiz-builder/PageAIPersonalizationPanel';
+import { CSVTable } from '@/components/ui/csv-table';
+import { CSVPreviewModal } from '@/components/ui/csv-preview-modal';
+import { toast } from "sonner";
 
 const elementCategories = [
   {
@@ -77,6 +85,7 @@ const elementCategories = [
       { type: 'button' as ElementType, name: "Button", icon: <Square className="h-4 w-4" /> },
       { type: 'link' as ElementType, name: "Link", icon: <LinkIcon className="h-4 w-4" /> },
       { type: 'image' as ElementType, name: "Image", icon: <Image className="h-4 w-4" /> },
+      { type: 'product' as ElementType, name: "Product", icon: <Boxes className="h-4 w-4" /> },
     ]
   }
 ];
@@ -102,9 +111,9 @@ const SIDEBAR_PANELS = [
     icon: <Paintbrush className="h-4 w-4" />
   },
   {
-    id: "ai",
-    label: "AI Personalization",
-    icon: <Sparkles className="h-4 w-4" />
+    id: "cms",
+    label: "CMS",
+    icon: <Database className="h-4 w-4" />
   },
   {
     id: "code",
@@ -257,8 +266,8 @@ export function NestedLeftSidebar() {
             <ThemePanel onClose={handlePanelClose} />
           )}
           
-          {effectivePanelType === "ai" && (
-            <AIPanel onClose={handlePanelClose} />
+          {effectivePanelType === "cms" && (
+            <CMSPanel onClose={handlePanelClose} />
           )}
           
           {effectivePanelType === "code" && (
@@ -409,22 +418,6 @@ function SectionsPanel({
 }
 
 // AIPanel component
-function AIPanel({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="h-full flex flex-col left-sidebar overflow-hidden">
-      <PanelHeader 
-        title="AI Personalization" 
-        onClose={onClose}
-      />
-      
-      {/* Panel content */}
-      <div className="flex-1 overflow-auto min-h-0">
-        <PageAIPersonalizationPanel />
-      </div>
-    </div>
-  );
-}
-
 // Theme panel component
 function ThemePanel({ onClose }: { onClose: () => void }) {
   // Get the entire store state and ignore TypeScript errors for specific actions
@@ -767,6 +760,219 @@ function CodePanel({ onClose }: { onClose?: () => void }) {
           <CodeEditor />
         </div>
       </div>
+    </div>
+  );
+}
+
+// CMS panel component
+function CMSPanel({ onClose }: { onClose: () => void }) {
+  const { quiz, setQuiz } = useQuizStore();
+  const [isApplying, setIsApplying] = useState(false);
+  const [productFeeds, setProductFeeds] = useState<Array<{url: string, name: string, type: string}>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  // Get the currently selected feed from the quiz state
+  const selectedFeed = quiz.productFeed?.url || "";
+  const selectedFileName = quiz.productFeed?.name || "";
+  
+  // Fetch the actual product feeds from the brand
+  useEffect(() => {
+    const fetchProductFeeds = async () => {
+      setIsLoading(true);
+      try {
+        // Fetch from the correct endpoint used in the application
+        const response = await fetch('/api/media?folder=products');
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.files && Array.isArray(data.files)) {
+            setProductFeeds(data.files);
+          } else {
+            setProductFeeds([]);
+          }
+        } else {
+          console.error('Failed to fetch product feeds');
+          setProductFeeds([]);
+        }
+      } catch (error) {
+        console.error('Error fetching product feeds:', error);
+        setProductFeeds([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProductFeeds();
+  }, []);
+  
+  const applyProductFeed = async (feedUrl: string) => {
+    if (!feedUrl || isApplying) return;
+    
+    setIsApplying(true);
+    
+    try {
+      // Find the selected feed in the productFeeds array
+      const selectedFile = productFeeds.find(feed => feed.url === feedUrl);
+      
+      if (selectedFile) {
+        // Update the quiz with the selected product feed
+        const updatedQuiz = {
+          ...quiz,
+          productFeed: {
+            url: selectedFile.url,
+            name: selectedFile.name
+          }
+        };
+        
+        // Save to the global state
+        setQuiz(updatedQuiz);
+        
+        // Show success notification
+        toast.success("Product feed applied to experience");
+      }
+    } catch (error) {
+      console.error('Error applying product feed:', error);
+      toast.error("Failed to apply product feed");
+    } finally {
+      setIsApplying(false);
+    }
+  };
+  
+  const handleFeedChange = (feedUrl: string) => {
+    // Don't do anything if already applying or if the selected feed is the same
+    if (isApplying || feedUrl === selectedFeed) return;
+    
+    // Apply the product feed when the selection changes
+    applyProductFeed(feedUrl);
+  };
+  
+  const handleOpenPreview = () => {
+    setIsPreviewOpen(true);
+  };
+  
+  const handleClosePreview = () => {
+    setIsPreviewOpen(false);
+  };
+  
+  // Clear product feed from the experience
+  const handleClearFeed = () => {
+    const updatedQuiz = {
+      ...quiz,
+      productFeed: undefined
+    };
+    
+    setQuiz(updatedQuiz);
+    toast.success("Product feed removed from experience");
+  };
+  
+  // Check if the selected feed is a CSV file
+  const isCSVFile = selectedFeed && (
+    selectedFeed.endsWith('.csv') || 
+    selectedFeed.endsWith('.xlsx') || 
+    selectedFeed.endsWith('.xls')
+  );
+  
+  return (
+    <div className="h-full flex flex-col left-sidebar overflow-hidden">
+      <PanelHeader 
+        title="CMS" 
+        onClose={onClose}
+      />
+      
+      {/* Panel content */}
+      <div className="flex-1 overflow-auto min-h-0">
+        <PropertyGroup title="Product Feeds" icon={<Database className="h-4 w-4" />}>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="product-feed">Select Product Feed</Label>
+              {isLoading ? (
+                <div className="flex items-center justify-center py-4">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span>Loading product feeds...</span>
+                </div>
+              ) : productFeeds.length > 0 ? (
+                <div className="flex gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={selectedFeed}
+                      onValueChange={handleFeedChange}
+                      disabled={isApplying}
+                    >
+                      <SelectTrigger id="product-feed" className="w-full">
+                        <SelectValue placeholder="Choose a product feed" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {productFeeds.map((feed) => (
+                          <SelectItem key={feed.url} value={feed.url}>
+                            {feed.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {selectedFeed && (
+                    <div className="flex gap-1">
+                      {isCSVFile && (
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button 
+                                variant="outline" 
+                                size="icon"
+                                onClick={handleOpenPreview}
+                                disabled={isApplying}
+                              >
+                                <Search className="h-4 w-4" />
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              Preview Feed Data
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+                      )}
+                      
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button 
+                              variant="outline" 
+                              size="icon"
+                              onClick={handleClearFeed}
+                              disabled={isApplying}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="top">
+                            Remove Feed
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground p-2 border rounded-md">
+                  No product feeds found. Please upload product feeds in your Media page.
+                </div>
+              )}
+            </div>
+          </div>
+        </PropertyGroup>
+      </div>
+      
+      {/* CSV Preview Modal */}
+      {selectedFeed && isCSVFile && (
+        <CSVPreviewModal
+          isOpen={isPreviewOpen}
+          onClose={handleClosePreview}
+          fileUrl={selectedFeed}
+          fileName={selectedFileName}
+        />
+      )}
     </div>
   );
 }

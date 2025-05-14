@@ -191,7 +191,7 @@ IMPORTANT RULES:
           { role: 'user', content: prompt }
         ],
         max_tokens: 300,
-        temperature: 0.7
+        temperature: aiSettings.temperature !== undefined ? parseFloat(aiSettings.temperature) : 0.7
       })
     });
     
@@ -208,15 +208,20 @@ IMPORTANT RULES:
   }
 }
 
-// New function to generate personalized content in batches
-async function generatePersonalizedContentBatch(
+// New function to generate personalized content in batches with product awareness
+async function generatePersonalizedContentBatchWithProducts(
   elementsToPersonalize: Array<{
     elementId: string;
     content: string;
     elementType: string;
     aiSettings: any;
   }>,
-  userProfile: UserProfileData
+  userProfile: UserProfileData,
+  selectedProducts: Record<string, Record<string, any>>,
+  productElements: Array<{
+    elementId: string;
+    aiSettings: any;
+  }>
 ): Promise<Record<string, string>> {
   // If no elements to personalize, return empty result
   if (elementsToPersonalize.length === 0) {
@@ -260,22 +265,67 @@ async function generatePersonalizedContentBatch(
       };
     });
     
+    // Format information about selected products to include in the prompt
+    const productInfo = Object.entries(selectedProducts).map(([elementId, product]) => {
+      const productElement = productElements.find(element => element.elementId === elementId);
+      const elementInfo = productElement ? 
+        `(has AI personalization settings: ${JSON.stringify(productElement.aiSettings.personalizationType || '')}, ${JSON.stringify(productElement.aiSettings.campaignGoal || '')})` : 
+        '';
+        
+      return `
+Product Element ${elementId} ${elementInfo}:
+- Selected Product: ${product.title || 'Unknown Product'}
+- Description: ${product.description || 'No description available'}
+- Price: ${product.price || 'Unknown price'}
+- Category: ${product.category || 'Unknown category'}
+- Tags: ${product.tags || 'No tags'}
+`;
+    }).join('\n');
+    
     // Prepare an array of all elements to personalize with their specific settings
     const elementsData = processedElements.map((element, index) => {
       const elementTypePrompt = element.elementType === 'button' 
         ? 'This content is for a button element. Keep it concise and action-oriented.'
         : 'This content is for a text element.';
+      
+      // Extract or calculate personalization level value
+      let personalizationLevelValue = 0.7; // default value
+      if (element.aiSettings.personalizationLevelValue) {
+        // If it's an array (from slider), use first value
+        if (Array.isArray(element.aiSettings.personalizationLevelValue)) {
+          personalizationLevelValue = element.aiSettings.personalizationLevelValue[0];
+        } 
+        // If it's a string (from URL param), parse to float
+        else if (typeof element.aiSettings.personalizationLevelValue === 'string') {
+          personalizationLevelValue = parseFloat(element.aiSettings.personalizationLevelValue);
+        }
+        // If it's already a number, use it directly
+        else if (typeof element.aiSettings.personalizationLevelValue === 'number') {
+          personalizationLevelValue = element.aiSettings.personalizationLevelValue;
+        }
+        
+        // Validate the value is within 0-1 range
+        if (isNaN(personalizationLevelValue) || personalizationLevelValue < 0 || personalizationLevelValue > 1) {
+          personalizationLevelValue = 0.7; // fallback to default
+        }
+      }
+      
+      // Add the personalizationLevelValue to the settings
+      const enhancedSettings = {
+        ...element.aiSettings,
+        personalizationLevelValue: personalizationLevelValue
+      };
 
       return {
         id: element.elementId,
         originalContent: element.content,
         elementType: element.elementType,
         elementTypePrompt,
-        settings: element.aiSettings
+        settings: enhancedSettings
       };
     });
 
-    // Create a batch prompt that includes all elements
+    // Create a batch prompt that includes all elements AND product information
     const batchPrompt = `
 You are a professional marketing copywriter who creates personalized content for multiple elements on a webpage.
 
@@ -285,6 +335,15 @@ User profile:
 - Hobbies: ${userProfile.hobbies?.join(', ') || 'Unknown'}
 - Sports: ${userProfile.sports?.join(', ') || 'Unknown'}
 - Owned Products: ${userProfile.ownedProducts?.join(', ') || 'Unknown'}
+
+${selectedProducts && Object.keys(selectedProducts).length > 0 ? 
+`IMPORTANT - SELECTED PRODUCTS INFORMATION:
+The following products have been selected for this user based on their profile:
+${productInfo}
+
+You MUST create content that refers to these specific products and their features in a natural way.
+All text elements should complement and support these product selections to create a cohesive marketing message.` 
+: 'No products have been selected for this user.'}
 
 I need you to personalize ${elementsData.length} different content elements on a screen. 
 For each element, I'll provide the original content, type of element, and personalization settings.
@@ -301,6 +360,9 @@ IMPORTANT GLOBAL RULES:
 9. For header/subheader pairs, ensure they complement each other and build on the same message
 10. For buttons, ensure their CTAs align with and support the messaging in the text elements
 11. If Content Instructions are provided for an element, incorporate those exact words/phrases into your response for that element
+${selectedProducts && Object.keys(selectedProducts).length > 0 ? 
+`12. MOST IMPORTANT: All content MUST reference the specific selected products shown above` 
+: ''}
 
 ANALYZE ELEMENTS AND THEIR RELATIONSHIPS:
 First, analyze how these elements should work together:
@@ -319,6 +381,7 @@ Now, create a cohesive messaging strategy that:
 2. Determines how each element contributes to that message
 3. Ensures elements build on each other rather than repeating the same message
 4. Creates a natural flow from headers to subheaders to body text to CTAs
+5. Ensures all content references and supports the selected products for this user
 
 Then, generate personalized content for each element that supports this cohesive strategy.
 
@@ -332,6 +395,7 @@ Personalization Settings:
 - Type: ${element.settings.personalizationType}
 - Goal: ${element.settings.campaignGoal}
 - Level: ${element.settings.personalizationLevel}
+- Personalization Intensity: ${element.settings.personalizationLevelValue.toFixed(2)} (0.00-1.00 scale where higher means more personalized)
 - Custom rules: ${element.settings.contentRules || 'None provided'}
 ${element.settings.processedInstructions ? `- Content Instructions: ${element.settings.processedInstructions} - IMPORTANT: Use these exact words/phrases in your response for this element. These represent specific wording the user wants in the final output.` : ''}
 `).join('\n')}
@@ -349,7 +413,10 @@ IMPORTANT: Before generating the final content:
 3. Generate content for each element while maintaining that cohesion
 4. Ensure headers and subheaders work together to tell a story
 5. Make sure CTAs align with and support the messaging in text elements
+6. MOST IMPORTANT: Ensure all content naturally references and supports the selected products
 `;
+
+    console.log('Sending request to OpenAI API for personalized content with product awareness');
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -376,6 +443,9 @@ IMPORTANT: Before generating the final content:
     
     if (data.choices && data.choices.length > 0) {
       try {
+        // Log the raw response for debugging
+        console.log("AI personalization response:", data.choices[0].message.content.trim());
+        
         // Parse the JSON response
         const contentUpdates = JSON.parse(data.choices[0].message.content.trim());
         return contentUpdates;
@@ -388,7 +458,308 @@ IMPORTANT: Before generating the final content:
       return {};
     }
   } catch (error) {
-    console.error('Error generating personalized content batch:', error);
+    console.error('Error generating personalized content batch with products:', error);
+    return {};
+  }
+}
+
+// New function to load product feed data
+async function loadProductFeed(feedUrl: string): Promise<Record<string, any>[]> {
+  if (!feedUrl) {
+    console.log('No feed URL provided');
+    return [];
+  }
+  
+  console.log('Loading product feed from URL:', feedUrl);
+  
+  try {
+    // Remove any leading or trailing whitespace
+    const trimmedUrl = feedUrl.trim();
+    
+    // Make sure URL starts with a slash if it's a relative path
+    const normalizedUrl = trimmedUrl.startsWith('/') ? trimmedUrl : `/${trimmedUrl}`;
+    
+    // Add a timestamp to bust cache
+    const cacheBuster = new Date().getTime();
+    const url = normalizedUrl.includes('?') 
+      ? `${normalizedUrl}&_=${cacheBuster}` 
+      : `${normalizedUrl}?_=${cacheBuster}`;
+    
+    const fetchUrl = `/api/csv?url=${encodeURIComponent(url)}`;
+    console.log('Fetching from:', fetchUrl);
+    
+    // Use fetch with proper error handling
+    const response = await fetch(fetchUrl);
+    
+    if (!response.ok) {
+      // Try to get the error message from the response
+      let errorMessage;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorData.details || response.statusText;
+      } catch {
+        errorMessage = response.statusText;
+      }
+      
+      console.error('CSV API returned error:', response.status, errorMessage);
+      throw new Error(`Failed to fetch product feed: ${errorMessage}`);
+    }
+    
+    const data = await response.json();
+    console.log('Raw product feed response:', data);
+    
+    if (!data.data || !Array.isArray(data.data) || data.data.length === 0) {
+      console.error('Invalid product feed data structure:', data);
+      return [];
+    }
+    
+    // Process the data to ensure consistent structure
+    const products = data.data.map((item: any, index: number) => {
+      // Log the raw item for debugging
+      console.log(`Product ${index} raw data:`, item);
+      
+      // Check for and log any missing required fields
+      const requiredFields = ['id', 'title', 'description', 'price', 'image', 'category', 'tags', 'url'];
+      const missingFields = requiredFields.filter(field => !item[field]);
+      
+      if (missingFields.length > 0) {
+        console.warn(`Product at index ${index} is missing fields: ${missingFields.join(', ')}`);
+      }
+      
+      // Ensure all fields are properly sanitized
+      return {
+        id: item.id?.toString() || `product-${index}`,
+        title: item.title?.toString() || 'Product Title',
+        description: item.description?.toString() || 'Product description',
+        price: item.price?.toString() || '0.00',
+        image: item.image?.toString() || '',
+        category: item.category?.toString() || '',
+        tags: item.tags?.toString() || '',
+        url: item.url?.toString() || '',
+        // Include any other fields as-is
+        ...Object.fromEntries(
+          Object.entries(item)
+            .filter(([key]) => !requiredFields.includes(key))
+        )
+      };
+    });
+    
+    console.log(`Successfully loaded ${products.length} products from feed`);
+    console.log('First product sample:', products.length > 0 ? JSON.stringify(products[0], null, 2) : 'No products');
+    
+    return products;
+  } catch (error) {
+    console.error('Error loading product feed:', error);
+    throw error; // Re-throw to allow handling upstream
+  }
+}
+
+// New function to select best product based on user profile
+async function selectBestProduct(
+  productElements: Array<{
+    elementId: string;
+    aiSettings: any;
+  }>,
+  productFeed: Record<string, any>[],
+  userProfile: UserProfileData
+): Promise<Record<string, Record<string, any>>> {
+  if (!productElements.length || !productFeed.length) {
+    console.log('No product elements or empty product feed');
+    return {};
+  }
+  
+  // Get OpenAI key from the first element (all should have the same key)
+  const openAIKey = productElements[0].aiSettings.openAIKey;
+  
+  if (!openAIKey) {
+    console.warn('OpenAI API key not provided for product selection');
+    return {};
+  }
+
+  // Create a map to store selected products for each element
+  const selectedProducts: Record<string, Record<string, any>> = {};
+  
+  try {
+    // Process product fields to create a cleaner representation
+    const productRows = productFeed.map((product, index) => {
+      // Handle potential missing fields
+      const { id = `${index}`, title = '', description = '', price = '', image = '', category = '', tags = '', url = '', ...rest } = product;
+      
+      // Log each product for debugging
+      console.log(`Processing product ${index}:`, { id, title, price, category });
+      
+      return {
+        id: id.toString(),
+        title: title.toString(),
+        description: description.toString(),
+        price: price.toString(),
+        image: image.toString(),
+        category: category.toString(),
+        tags: tags.toString(),
+        url: url.toString(),
+        attributes: rest // All other fields
+      };
+    });
+    
+    console.log(`Processed ${productRows.length} products for selection`);
+    
+    // If we have fewer than 2 products, just assign the first one to all elements
+    if (productRows.length === 1) {
+      console.log('Only one product available, assigning to all elements');
+      for (const element of productElements) {
+        selectedProducts[element.elementId] = productRows[0];
+      }
+      return selectedProducts;
+    }
+    
+    // Create prompt for OpenAI to select the best product
+    const prompt = `
+You are an expert product recommendation system. Your task is to select the most relevant products from a product feed based on user profiles and personalization settings.
+
+User profile:
+- Name: ${userProfile.name || 'Unknown'}
+- Location: ${userProfile.location || 'Unknown'}
+- Hobbies: ${userProfile.hobbies?.join(', ') || 'Unknown'}
+- Sports: ${userProfile.sports?.join(', ') || 'Unknown'}
+- Owned Products: ${userProfile.ownedProducts?.join(', ') || 'Unknown'}
+
+I need you to select the best product for each of the following product elements:
+
+${productElements.map((element, index) => `
+PRODUCT ELEMENT ${index + 1} (ID: ${element.elementId}):
+Personalization Settings:
+- Type: ${element.aiSettings.personalizationType}
+- Goal: ${element.aiSettings.campaignGoal}
+- Level: ${element.aiSettings.personalizationLevel}
+- Custom rules: ${element.aiSettings.contentRules || 'None provided'}
+${element.aiSettings.contentInstructions ? `- Content Instructions: ${element.aiSettings.contentInstructions}` : ''}
+`).join('\n')}
+
+Available Products:
+${productRows.map((product, index) => `
+PRODUCT ${index + 1}:
+- ID: ${product.id}
+- Title: ${product.title}
+- Description: ${product.description}
+- Price: ${product.price}
+- Category: ${product.category}
+- Tags: ${product.tags}
+`).join('\n')}
+
+For each product element, select the single best product from the available products that matches the personalization settings and user profile.
+Explain your reasoning for each selection based on how well it matches the user's interests, location, and other profile information.
+
+Respond with a JSON object where each key is the element ID and the value is the selected product index (0-based) in the product feed.
+Example format:
+{
+  "element-id-1": 0,
+  "element-id-2": 3
+}
+`;
+
+    console.log('Sending prompt to OpenAI for product selection');
+    
+    try {
+      const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openAIKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { 
+              role: 'system', 
+              content: 'You are a product recommendation AI that selects the most relevant products from a feed based on user profiles. Always respond with valid JSON containing element IDs mapped to product indices.' 
+            },
+            { role: 'user', content: prompt }
+          ],
+          max_tokens: 1500,
+          temperature: 0.3,
+          response_format: { type: "json_object" }
+        })
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('OpenAI API error:', response.status, errorText);
+        throw new Error(`OpenAI API error: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('OpenAI API response received:', data);
+      
+      if (data.choices && data.choices.length > 0) {
+        try {
+          // Parse the JSON response
+          const content = data.choices[0].message.content.trim();
+          console.log('OpenAI response content:', content);
+          
+          const productSelections = JSON.parse(content);
+          console.log('Parsed product selections:', productSelections);
+          
+          // Map selected product indices to actual product data
+          for (const elementId in productSelections) {
+            const productIndex = productSelections[elementId];
+            if (productIndex >= 0 && productIndex < productRows.length) {
+              selectedProducts[elementId] = productRows[productIndex];
+              console.log(`Selected product ${productIndex} for element ${elementId}:`, productRows[productIndex].title);
+            } else {
+              console.warn(`Invalid product index ${productIndex} for element ${elementId}`);
+            }
+          }
+          
+          // If no products were selected, assign the first one to all elements
+          if (Object.keys(selectedProducts).length === 0 && productRows.length > 0) {
+            console.log('No products were selected by AI, using default selection');
+            for (const element of productElements) {
+              selectedProducts[element.elementId] = productRows[0];
+            }
+          }
+          
+          return selectedProducts;
+        } catch (parseError) {
+          console.error('Error parsing JSON response from OpenAI API for product selection:', parseError);
+          
+          // Fallback to first product
+          if (productRows.length > 0) {
+            console.log('Using fallback product selection due to parsing error');
+            for (const element of productElements) {
+              selectedProducts[element.elementId] = productRows[0];
+            }
+          }
+          
+          return selectedProducts;
+        }
+      } else {
+        console.error('No choices in OpenAI API response for product selection', data);
+        
+        // Fallback to first product
+        if (productRows.length > 0) {
+          console.log('Using fallback product selection due to no choices');
+          for (const element of productElements) {
+            selectedProducts[element.elementId] = productRows[0];
+          }
+        }
+        
+        return selectedProducts;
+      }
+    } catch (apiError) {
+      console.error('Error calling OpenAI API for product selection:', apiError);
+      
+      // Fallback to first product
+      if (productRows.length > 0) {
+        console.log('Using fallback product selection due to API error');
+        for (const element of productElements) {
+          selectedProducts[element.elementId] = productRows[0];
+        }
+      }
+      
+      return selectedProducts;
+    }
+  } catch (error) {
+    console.error('Error selecting best products:', error);
     return {};
   }
 }
@@ -398,7 +769,9 @@ async function personalizeQuizContent(
   quiz: any, 
   screenIndex: number, 
   userProfile: UserProfileData,
-  profileId: string
+  profileId: string,
+  temperature?: string,
+  personalizationLevelValue?: string
 ): Promise<{ html: string, css: string }> {
   if (!quiz || !quiz.screens || quiz.screens.length === 0 || screenIndex >= quiz.screens.length) {
     return { html: '', css: '' };
@@ -417,6 +790,15 @@ async function personalizeQuizContent(
     elementType: string;
     aiSettings: any;
   }> = [];
+
+  // Collection of product elements for product selection
+  const productElements: Array<{
+    elementId: string;
+    aiSettings: any;
+  }> = [];
+  
+  // Storage for selected products (to be used in content generation)
+  let selectedProducts: Record<string, Record<string, any>> = {};
   
   // Get brand pages from localStorage
   const getBrandPages = () => {
@@ -443,7 +825,6 @@ async function personalizeQuizContent(
   }
   
   // Create a cache for brand page matches based on button content + user profile
-  // This will ensure consistent matching throughout a session
   const matchCache: Record<string, string> = {};
   
   // Log which profile we're using
@@ -607,15 +988,63 @@ async function personalizeQuizContent(
     return null;
   };
 
-  // First pass: Collect all elements that need personalization
-  async function collectElements(element: any) {
-    // Process text and button elements with AI settings
-    if ((element.type === 'text' || element.type === 'button') && element.attributes?.aiSettings) {
-      try {
-        const aiSettings = JSON.parse(element.attributes.aiSettings);
+  // Get experience-wide AI settings if they exist
+  let experienceWideAISettings: Record<string, any> | null = null;
+  if (quiz.aiSettings) {
+    try {
+      experienceWideAISettings = JSON.parse(quiz.aiSettings);
+      console.log('Found experience-wide AI settings:', experienceWideAISettings);
+      
+      // Add temperature parameter if provided
+      if (temperature && experienceWideAISettings) {
+        experienceWideAISettings.temperature = temperature;
+      }
+      
+      // Add personalizationLevelValue if provided
+      if (personalizationLevelValue && experienceWideAISettings) {
+        // Store the personalizationLevelValue directly as a number
+        const personalizationValue = parseFloat(personalizationLevelValue);
+        experienceWideAISettings.personalizationLevelValue = personalizationValue;
         
-        // Check if we have all needed data for personalization
-        if (aiSettings.openAIKey && userProfile) {
+        // Skip personalization entirely if value is near zero
+        if (personalizationValue <= 0.05) {
+          console.log('Personalization level set to None - skipping personalization');
+          experienceWideAISettings.skipPersonalization = true;
+          experienceWideAISettings.personalizationLevel = 'low';
+        } else {
+          // Set the string personalizationLevel based on the numeric value
+          if (personalizationValue <= 0.33) {
+            experienceWideAISettings.personalizationLevel = 'low';
+          } else if (personalizationValue <= 0.66) {
+            experienceWideAISettings.personalizationLevel = 'medium';
+          } else {
+            experienceWideAISettings.personalizationLevel = 'high';
+          }
+        }
+      }
+      
+      // Get API key from localStorage
+      const openAIKey = localStorage.getItem('brandOpenAIKey') || '';
+      if (experienceWideAISettings) {
+        experienceWideAISettings.openAIKey = openAIKey;
+      }
+      
+    } catch (error) {
+      console.error('Error parsing experience-wide AI settings:', error);
+    }
+  }
+  
+  // First pass: Collect all elements that need personalization
+  async function collectElements(element: any, isInsideProduct: boolean = false) {
+    // Process text and button elements with experience-wide AI settings
+    if ((element.type === 'text' || element.type === 'button')) {
+      // Only use experience-wide settings
+      let aiSettings = experienceWideAISettings;
+      
+      // Check if we have all needed data for personalization and aren't skipping personalization
+      if (aiSettings && aiSettings.openAIKey && userProfile && !aiSettings.skipPersonalization) {
+        // Only add to elements to personalize if not inside a product element
+        if (!isInsideProduct) {
           needsPersonalization = true;
           
           // Add to elements to personalize
@@ -625,22 +1054,134 @@ async function personalizeQuizContent(
             elementType: element.type,
             aiSettings
           });
+        } else {
+          console.log(`Skipping personalization for ${element.type} element ${element.id} inside product element`);
         }
-      } catch (error) {
-        console.error('Error parsing AI settings:', error);
+      }
+    }
+    
+    // Collect product elements with experience-wide AI settings
+    if (element.type === 'product') {
+      // Only use experience-wide settings
+      let aiSettings = experienceWideAISettings;
+      
+      // Check if we have all needed data for personalization and aren't skipping personalization
+      if (aiSettings && aiSettings.openAIKey && userProfile && !aiSettings.skipPersonalization) {
+        // Only add to product elements if product personalization is enabled
+        if (aiSettings.enableProductPersonalization === true || 
+            aiSettings.enableProductPersonalization === 'true') {
+          console.log('Product personalization ENABLED for:', element.id);
+          // Add to product elements collection
+          productElements.push({
+            elementId: element.id,
+            aiSettings
+          });
+        } else {
+          console.log('Product personalization DISABLED for:', element.id, 'enableProductPersonalization:', aiSettings.enableProductPersonalization);
+        }
+      } else {
+        console.log('Missing aiSettings, OpenAI key, or user profile for product:', element.id);
       }
     }
     
     // Process children recursively if it's a group
     if (element.isGroup && element.children) {
+      // Pass down whether we're inside a product element or not
+      const isInsideProductElement = isInsideProduct || element.type === 'product';
+      
       for (const child of element.children) {
-        await collectElements(child);
+        await collectElements(child, isInsideProductElement);
+      }
+    }
+  }
+  
+  // Second pass: Update product elements with selected products
+  function updateProductElements(element: any, selectedProducts: Record<string, Record<string, any>>) {
+    // Update product element if it's in the selected products
+    if (element.type === 'product' && selectedProducts[element.id]) {
+      const product = selectedProducts[element.id];
+      console.log('Updating product element:', element.id, 'with product:', product);
+      
+      // Debug the product data structure
+      console.log('Product data structure:', JSON.stringify(product, null, 2));
+      
+      // Update product attributes - make sure they have the correct format
+      element.attributes = {
+        ...element.attributes,
+        productId: product.id || '',
+        productTitle: product.title || 'Product Title',
+        productDescription: product.description || 'Product description',
+        productPrice: product.price || '$0.00',
+        productImage: product.image || '',
+        productUrl: product.url || ''
+      };
+      
+      console.log('Updated product attributes:', JSON.stringify(element.attributes, null, 2));
+      
+      // Update child elements with product data
+      if (element.isGroup && element.children && element.children.length > 0) {
+        console.log('Updating', element.children.length, 'child elements');
+        for (const child of element.children) {
+          // Match content based on element type
+          if (child.type === 'image' && product.image) {
+            console.log('Updating image:', child.id, 'with:', product.image);
+            child.attributes = {
+              ...child.attributes,
+              src: product.image,
+              alt: product.title || 'Product Image'
+            };
+          } else if (child.type === 'text') {
+            // Update text elements based on their content
+            if (child.content && (child.content.includes('Product Title') || child.content === 'Product Title')) {
+              console.log('Updating title text:', child.id, 'with:', product.title);
+              child.content = product.title || 'Product Title';
+            } else if (child.content && (child.content.includes('description') || child.content.includes('Description'))) {
+              console.log('Updating description text:', child.id, 'with:', product.description);
+              child.content = product.description || 'Product description';
+            } else if (child.content && (child.content.includes('$') || child.content.includes('Price'))) {
+              console.log('Updating price text:', child.id, 'with:', product.price);
+              child.content = product.price ? `$${product.price}` : '$0.00';
+            }
+          } else if (child.type === 'button' && product.url) {
+            console.log('Updating button:', child.id, 'with URL:', product.url);
+            // Preserve the button's original text content but update the URL action
+            const originalContent = child.content;
+            
+            // Update button action to point to product URL
+            child.attributes = {
+              ...child.attributes,
+              actionType: 'open-url',
+              url: product.url
+            };
+            
+            // Verify content was not changed by checking if it was personalized
+            if (child.content !== originalContent) {
+              console.log('Button content was changed from:', originalContent, 'to:', child.content);
+              console.log('Keeping original button content inside product');
+              // Keep original content
+              child.content = originalContent;
+            }
+          }
+        }
+      } else {
+        console.log('Product is not a group or has no children:', element.isGroup, element.children?.length);
+      }
+    } else if (element.type === 'product') {
+      console.log('Product element not found in selected products:', element.id);
+    }
+    
+    // Process children recursively if it's a group (but not a product group)
+    if (element.isGroup && element.children && element.type !== 'product') {
+      for (const child of element.children) {
+        updateProductElements(child, selectedProducts);
       }
     }
   }
   
   // Second pass: Apply personalized content to the elements
-  function updateElements(element: any, personalizedContent: Record<string, string>, updatedDestinations: Record<string, string>) {
+  function updateElements(element: any, personalizedContent: Record<string, string>, updatedDestinations: Record<string, string>, isInsideProduct: boolean = false) {
+    // Skip updating if inside a product element
+    if (!isInsideProduct) {
     // Update element if it has personalized content
     if (personalizedContent[element.id]) {
       element.content = personalizedContent[element.id];
@@ -654,17 +1195,23 @@ async function personalizeQuizContent(
           url: updatedDestinations[element.id]
         };
       }
+      }
+    } else if (personalizedContent[element.id]) {
+      console.log(`Skipping personalization update for element ${element.id} inside product element`);
     }
     
     // Process children recursively if it's a group
     if (element.isGroup && element.children) {
+      // Pass down whether we're inside a product element
+      const isInsideProductElement = isInsideProduct || element.type === 'product';
+      
       for (const child of element.children) {
-        updateElements(child, personalizedContent, updatedDestinations);
+        updateElements(child, personalizedContent, updatedDestinations, isInsideProductElement);
       }
     }
   }
   
-  // Process each section in the screen
+  // Process each section in the screen to collect elements
   for (const sectionKey in clonedScreen.sections) {
     const section = clonedScreen.sections[sectionKey];
     
@@ -672,84 +1219,125 @@ async function personalizeQuizContent(
     
     // Process all elements in the section
     for (const element of section.elements) {
-      await collectElements(element);
+      await collectElements(element, false);
     }
   }
   
-  // Process personalization if needed
+  // FIRST: Process product selection if we have product elements and a feed
+  if (productElements.length > 0 && quiz.productFeed?.url) {
+    console.log('Starting product personalization for', productElements.length, 'product elements');
+    console.log('Product feed URL:', quiz.productFeed.url);
+    
+    try {
+      // Load product feed data
+      const productFeedData = await loadProductFeed(quiz.productFeed.url);
+      
+      console.log('Loaded product feed with', productFeedData.length, 'products');
+      
+      if (productFeedData.length > 0) {
+        // Select best products for each product element
+        console.log('Selecting best products for user profile...');
+        selectedProducts = await selectBestProduct(productElements, productFeedData, userProfile);
+        
+        console.log('Selected products:', selectedProducts);
+        
+        // Update product elements with selected products
+        for (const sectionKey in clonedScreen.sections) {
+          const section = clonedScreen.sections[sectionKey];
+          
+          if (!section.enabled) continue;
+          
+          for (const element of section.elements) {
+            updateProductElements(element, selectedProducts);
+          }
+        }
+      } else {
+        console.warn('Product feed loaded, but no products found');
+      }
+    } catch (error) {
+      console.error('Error processing product feed:', error);
+      // Continue with personalization but without product data
+    }
+  } else {
+    if (productElements.length > 0) {
+      console.warn('Found product elements but no product feed URL configured');
+    } else if (quiz.productFeed?.url) {
+      console.warn('Product feed configured but no product elements found with personalization enabled');
+    }
+  }
+  
+  // SECOND: Process text personalization with awareness of selected products
   if (needsPersonalization && elementsToPersonalize.length > 0) {
-    // Generate personalized content for all elements in a batch
-    const personalizedContent = await generatePersonalizedContentBatch(elementsToPersonalize, userProfile);
+    // Check if personalization is set to be skipped
+    const shouldSkipPersonalization = experienceWideAISettings?.skipPersonalization === true;
     
-    // Track updated destinations for buttons
-    const updatedDestinations: Record<string, string> = {};
-    
-    // For each button element with destination matching enabled, find a matching brand page
-    for (const element of elementsToPersonalize) {
-      if (element.elementType === 'button' && personalizedContent[element.elementId]) {
-        try {
-          // Get the aiSettings by parsing it from attributes if it exists as a string
-          let aiSettings = element.aiSettings || {}; 
-          
-          // Check if the element has attributes property
-          const elementWithAttributes = element as any;
-          
-          // If aiSettings is stored as a string in attributes, parse it
-          if (elementWithAttributes.attributes?.aiSettings && 
-              typeof elementWithAttributes.attributes.aiSettings === 'string') {
-            try {
-              aiSettings = JSON.parse(elementWithAttributes.attributes.aiSettings);
-              console.log('📋 Parsed AI settings from attributes:', aiSettings);
-            } catch (e) {
-              console.error('Failed to parse aiSettings from attributes:', e);
-            }
-          }
-          
-          // Better debugging: Log the enableDestinationMatching value
-          console.log(`Button element ${element.elementId}:`);
-          console.log(`- Original text: ${element.content}`);
-          console.log(`- Personalized text: ${personalizedContent[element.elementId]}`);
-          console.log(`- enableDestinationMatching:`, aiSettings.enableDestinationMatching);
-          console.log(`- enableDestinationMatching type: ${typeof aiSettings.enableDestinationMatching}`);
-          
-          // Fix the comparison: Check both 'true' string and true boolean, as it could be stored either way
-          if ((aiSettings.enableDestinationMatching === true || aiSettings.enableDestinationMatching === 'true') && 
-              brandPages && brandPages.length > 0) {
-            console.log(`✅ Destination matching is enabled for button ${element.elementId}`);
+    if (shouldSkipPersonalization) {
+      console.log('Personalization level set to None - skipping AI processing');
+    } else {
+      // Generate personalized content for all elements in a batch, now with product information
+      const personalizedContent = await generatePersonalizedContentBatchWithProducts(
+        elementsToPersonalize, 
+        userProfile, 
+        selectedProducts,
+        productElements
+      );
+      
+      // Track updated destinations for buttons
+      const updatedDestinations: Record<string, string> = {};
+      
+      // For each button element with destination matching enabled, find a matching brand page
+      for (const element of elementsToPersonalize) {
+        if (element.elementType === 'button' && personalizedContent[element.elementId]) {
+          try {
+            // Get the aiSettings directly from experience-wide settings
+            let aiSettings = element.aiSettings || {}; 
             
-            // Collect all text content for the current screen
-            let fullPageText = elementsToPersonalize
-              .filter(e => e.elementType === 'text')
-              .map(e => personalizedContent[e.elementId] || e.content)
-              .join(' ');
+            // Better debugging: Log the enableDestinationMatching value
+            console.log(`Button element ${element.elementId}:`);
+            console.log(`- Original text: ${element.content}`);
+            console.log(`- Personalized text: ${personalizedContent[element.elementId]}`);
+            console.log(`- enableDestinationMatching:`, aiSettings.enableDestinationMatching);
+            console.log(`- enableDestinationMatching type: ${typeof aiSettings.enableDestinationMatching}`);
             
-            // Find matching brand page based on full page text
-            const matchingPage = findMatchingBrandPage(fullPageText, userProfile);
-            
-            // If we found a matching page, store it for later application
-            if (matchingPage) {
-              updatedDestinations[element.elementId] = matchingPage.url;
-              console.log(`🔗 Setting destination for button ${element.elementId} to ${matchingPage.url}`);
+            // Fix the comparison: Check both 'true' string and true boolean, as it could be stored either way
+            if ((aiSettings.enableDestinationMatching === true || aiSettings.enableDestinationMatching === 'true') && 
+                brandPages && brandPages.length > 0) {
+              console.log(`✅ Destination matching is enabled for button ${element.elementId}`);
+              
+              // Collect all text content for the current screen
+              let fullPageText = elementsToPersonalize
+                .filter(e => e.elementType === 'text')
+                .map(e => personalizedContent[e.elementId] || e.content)
+                .join(' ');
+              
+              // Find matching brand page based on full page text
+              const matchingPage = findMatchingBrandPage(fullPageText, userProfile);
+              
+              // If we found a matching page, store it for later application
+              if (matchingPage) {
+                updatedDestinations[element.elementId] = matchingPage.url;
+                console.log(`🔗 Setting destination for button ${element.elementId} to ${matchingPage.url}`);
+              } else {
+                console.log(`❌ No matching page found for button ${element.elementId}`);
+              }
             } else {
-              console.log(`❌ No matching page found for button ${element.elementId}`);
+              console.log(`⚠️ Destination matching is NOT enabled for button ${element.elementId}`);
             }
-          } else {
-            console.log(`⚠️ Destination matching is NOT enabled for button ${element.elementId}`);
+          } catch (error) {
+            console.error('Error processing destination matching:', error);
           }
-        } catch (error) {
-          console.error('Error processing destination matching:', error);
         }
       }
-    }
-    
-    // Update elements with personalized content and destinations
-    for (const sectionKey in clonedScreen.sections) {
-      const section = clonedScreen.sections[sectionKey];
       
-      if (!section.enabled) continue;
-      
-      for (const element of section.elements) {
-        updateElements(element, personalizedContent, updatedDestinations);
+      // Update elements with personalized content and destinations
+      for (const sectionKey in clonedScreen.sections) {
+        const section = clonedScreen.sections[sectionKey];
+        
+        if (!section.enabled) continue;
+        
+        for (const element of section.elements) {
+          updateElements(element, personalizedContent, updatedDestinations, false);
+        }
       }
     }
   }
@@ -767,6 +1355,9 @@ interface PreviewPageProps {
   };
   searchParams: {
     profile?: string;
+    temperature?: string;
+    hideOverlay?: string;
+    personalizationLevelValue?: string;
   };
 }
 
@@ -781,11 +1372,20 @@ export default function PreviewPage({ params, searchParams }: PreviewPageProps) 
   const [startTime, setStartTime] = useState<number>(0);
   
   // Add state for selected user profile
-  const [selectedProfile, setSelectedProfile] = useState<string>('default');
+  const [selectedProfile, setSelectedProfile] = useState<string>(searchParams.profile || 'default');
   const [isPersonalizing, setIsPersonalizing] = useState<boolean>(false);
   
   // Add state for profile panel expansion
   const [isProfileExpanded, setIsProfileExpanded] = useState<boolean>(false);
+  
+  // Temperature from search params
+  const temperature = searchParams.temperature;
+  
+  // Personalization level value from search params
+  const personalizationLevelValue = searchParams.personalizationLevelValue;
+  
+  // Check if overlays should be hidden (for embedding in testing page)
+  const hideOverlay = searchParams.hideOverlay === 'true';
   
   // Get functions from store
   const loadQuiz = useQuizStore((state) => state.loadQuiz);
@@ -818,7 +1418,9 @@ export default function PreviewPage({ params, searchParams }: PreviewPageProps) 
           quiz,
           currentScreenIndex,
           userProfile,
-          profileId
+          profileId,
+          temperature,
+          personalizationLevelValue
         );
         
         setHtml(html);
@@ -946,7 +1548,9 @@ export default function PreviewPage({ params, searchParams }: PreviewPageProps) 
           quiz,
           currentScreenIndex,
           userProfile,
-          selectedProfile
+          selectedProfile,
+          temperature,
+          personalizationLevelValue
         );
         
         setHtml(html);
@@ -1530,7 +2134,8 @@ export default function PreviewPage({ params, searchParams }: PreviewPageProps) 
         referrerPolicy="no-referrer"
       />
       
-      {!isLoading && !error && previewControls}
+      {/* Only render controls if not in embedded mode */}
+      {!isLoading && !error && !hideOverlay && previewControls}
     </>
   );
 } 

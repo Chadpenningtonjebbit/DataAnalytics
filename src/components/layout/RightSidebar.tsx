@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PropertiesPanel } from '@/components/quiz-builder/PropertiesPanel';
 import { SectionPropertiesPanel } from '@/components/quiz-builder/SectionPropertiesPanel';
@@ -23,30 +23,14 @@ export function RightSidebar() {
   // Check if a group is selected
   const isGroupSelected = () => {
     if (selectedElementIds.length === 1) {
-      // Find the selected element
+      // First check if it's a direct child of a section
       for (const screen of quiz.screens) {
         for (const sectionKey of Object.keys(screen.sections) as SectionType[]) {
           const section = screen.sections[sectionKey];
-          
-          // First check if the group is directly in the section
-          const element = section.elements.find((el: QuizElement) => 
-            el.id === selectedElementIds[0] && el.isGroup
-          );
+          const element = section.elements.find((el: QuizElement) => el.id === selectedElementIds[0]);
           if (element) {
-            return true;
-          }
-          
-          // If not found directly in the section, check inside other groups
-          for (const parentGroup of section.elements) {
-            if (parentGroup.isGroup && parentGroup.children) {
-              const nestedGroup = parentGroup.children.find((child: QuizElement) => 
-                child.id === selectedElementIds[0] && child.isGroup
-              );
-              
-              if (nestedGroup) {
-                return true;
-              }
-            }
+            // Check if this element is a group or product
+            return element.isGroup || element.type === 'product';
           }
         }
       }
@@ -123,32 +107,39 @@ export function RightSidebar() {
     return null;
   };
   
-  // Get the type of the selected element or section
-  const getSelectedItemType = () => {
-    if (selectedElementIds.length > 0) {
-      // Check if it's a group first
-      if (isGroupSelected()) {
+  // Get title for panel
+  const tabTitle = useMemo(() => {
+    // If no selection, show placeholder text
+    if (selectedElementIds.length === 0 && !selectedSectionId) {
+      return "Properties";
+    }
+    
+    // If a section is selected, show section name
+    if (selectedSectionId) {
+      const sectionName = selectedSectionId.charAt(0).toUpperCase() + selectedSectionId.slice(1);
+      return `${sectionName} Section`;
+    }
+    
+    // If multiple elements are selected
+    if (selectedElementIds.length > 1) {
+      return `${selectedElementIds.length} Elements`;
+    }
+    
+    // For single element selection
+    const element = getSelectedElement();
+    if (element) {
+      // Special case for group or product elements
+      if (element.type === 'group' || element.type === 'product') {
         return "Group";
       }
       
-      // Get the selected element (whether in a group or not)
-      const element = getSelectedElement();
-      if (element) {
-        // Capitalize the first letter of the element type
-        return element.type.charAt(0).toUpperCase() + element.type.slice(1);
-      }
-      
-      return "Element";
-    } else if (selectedSectionId) {
-      // Capitalize the first letter of the section name
-      return selectedSectionId.charAt(0).toUpperCase() + selectedSectionId.slice(1);
+      // Default for regular elements
+      const elementType = element.type.charAt(0).toUpperCase() + element.type.slice(1);
+      return elementType;
     }
+    
     return "Properties";
-  };
-  
-  const tabTitle = selectedElementIds.length > 0 || selectedSectionId 
-    ? getSelectedItemType() 
-    : "Properties";
+  }, [selectedElementIds, selectedSectionId, quiz]);
 
   // If nothing is selected, show the empty state
   if (!hasSelection) {

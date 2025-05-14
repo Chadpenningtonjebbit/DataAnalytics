@@ -5,7 +5,7 @@ import { DndContext, DragEndEvent, DragStartEvent, MouseSensor, TouchSensor, use
 import { useQuizStore } from '@/store/useQuizStore';
 import { ElementType, SectionType } from '@/types';
 import { Card, CardContent } from "@/components/ui/card";
-import { Type, Square, Link as LinkIcon, Image } from 'lucide-react';
+import { Type, Square, Link as LinkIcon, Image, Boxes } from 'lucide-react';
 
 interface DndProviderProps {
   children: React.ReactNode;
@@ -102,6 +102,8 @@ export function DndProvider({ children }: DndProviderProps) {
         return <LinkIcon className="h-4 w-4" />;
       case 'image':
         return <Image className="h-4 w-4" />;
+      case 'product':
+        return <Boxes className="h-4 w-4" />;
       default:
         return null;
     }

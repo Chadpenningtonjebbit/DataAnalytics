@@ -238,10 +238,25 @@ export default function Media() {
   // Function to validate and format URL
   const validateUrl = (url: string): string => {
     let formattedUrl = url.trim();
+    
+    // Handle special case for URLs starting with @
+    if (formattedUrl.startsWith('@')) {
+      formattedUrl = formattedUrl.substring(1);
+    }
+    
+    // Add protocol if missing
     if (!formattedUrl.startsWith('http://') && !formattedUrl.startsWith('https://')) {
       formattedUrl = 'https://' + formattedUrl;
     }
-    return formattedUrl;
+    
+    try {
+      // Validate URL format
+      new URL(formattedUrl);
+      return formattedUrl;
+    } catch (error) {
+      // If URL is invalid, return the original input to avoid breaking user input
+      return formattedUrl;
+    }
   };
   
   // Function to scan website for subpages
@@ -411,6 +426,56 @@ export default function Media() {
                 type
               });
             }
+          } else {
+            // Process external product URLs
+            const href = absoluteUrl.href.toLowerCase();
+            const path = absoluteUrl.pathname.toLowerCase();
+            
+            // Improved pattern matching for product URLs
+            const isProductUrl = 
+              // Common product URL patterns with more specific matching
+              (path.includes('/p/') || 
+               // Match specific product identifiers in paths
+               path.match(/\/product[-_]?[0-9a-zA-Z]{3,}/) ||
+               path.match(/\/products\/[^\/]+$/) ||
+               path.match(/\/item[-_]?[0-9a-zA-Z]{3,}/) ||
+               path.match(/\/pd\/[^\/]+$/) ||
+               // Look for SKU/product ID patterns in URL
+               path.match(/\d{5,}\/\d{5,}/) ||
+               // Match query parameters common in product URLs
+               href.includes('product_id=') ||
+               href.includes('productid=') ||
+               href.includes('item=') ||
+               href.includes('sku=') ||
+               // Match color parameters in query string which often indicate product pages
+               href.match(/[?&]color=/i) ||
+               href.match(/[?&]size=/i) ||
+               // Look for common product review sections
+               path.includes('/review') ||
+               // Check common e-commerce domains with product indicators
+               (absoluteUrl.hostname.includes('amazon.') && (path.includes('/dp/') || path.includes('/gp/product/'))) || 
+               (absoluteUrl.hostname.includes('ebay.') && path.includes('/itm/')) ||
+               (absoluteUrl.hostname.includes('walmart.') && path.includes('/ip/')) ||
+               (absoluteUrl.hostname.includes('target.') && path.match(/\/-\/A-\d+/)) ||
+               (absoluteUrl.hostname.includes('bestbuy.') && path.includes('/site/')) ||
+               (absoluteUrl.hostname.includes('etsy.') && path.includes('/listing/')) ||
+               (absoluteUrl.hostname.includes('zappos.') && path.includes('/product/')) ||
+               // Match Dick's Sporting Goods product URL pattern specifically
+               (absoluteUrl.hostname.includes('dickssportinggoods.') && 
+                (path.includes('/p/') || href.match(/[?&]color=/i) || path.match(/\/[a-z0-9]{5,}\/[a-z0-9]{5,}/))));
+            
+            if (isProductUrl) {
+              const linkText = link.textContent?.trim() || "External Product";
+              
+              // Only add if it's not already in the list
+              if (!foundSubpages.some(page => page.url === absoluteUrl.href)) {
+                foundSubpages.push({
+                  url: absoluteUrl.href,
+                  title: linkText,
+                  type: 'external-product'
+                });
+              }
+            }
           }
         } catch (error) {
           console.error('Error processing link:', error);
@@ -510,6 +575,11 @@ export default function Media() {
   
   // Format content type for display
   const formatType = (type: string) => {
+    if (type === 'external-product') {
+      return 'External Product';
+    } else if (type === 'unknown-link') {
+      return 'Unknown URL Type';
+    }
     return type.charAt(0).toUpperCase() + type.slice(1);
   };
 
@@ -748,8 +818,9 @@ export default function Media() {
                                         href={page.url} 
                                         target="_blank" 
                                         rel="noopener noreferrer"
-                                        className="text-primary hover:underline"
+                                        className={`hover:underline ${page.type === 'external-product' ? 'text-green-600 dark:text-green-400 flex items-center' : 'text-primary'}`}
                                       >
+                                        {page.type === 'external-product' && <ShoppingBag className="h-4 w-4 mr-2 inline-block" />}
                                         {page.title}
                                       </a>
                                     </TableCell>
@@ -761,6 +832,138 @@ export default function Media() {
                           </div>
                         </div>
                       )}
+
+                      {/* Direct Product URL Test */}
+                      <div className="space-y-3 mt-8 pt-6 border-t">
+                        <div className="space-y-2">
+                          <Label htmlFor="direct-product-url">Test Product URL Directly</Label>
+                          <div className="flex gap-2">
+                            <Input 
+                              id="direct-product-url" 
+                              placeholder="https://www.example.com/product/123" 
+                              className="flex-1"
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  const inputUrl = (e.target as HTMLInputElement).value;
+                                  if (inputUrl) {
+                                    const url = validateUrl(inputUrl);
+                                    try {
+                                      const absoluteUrl = new URL(url);
+                                      const path = absoluteUrl.pathname.toLowerCase();
+                                      const href = absoluteUrl.href.toLowerCase();
+                                      
+                                      // Use the same product detection logic
+                                      const isProductUrl = 
+                                        (path.includes('/p/') || 
+                                         path.match(/\/product[-_]?[0-9a-zA-Z]{3,}/) ||
+                                         path.match(/\/products\/[^\/]+$/) ||
+                                         path.match(/\/item[-_]?[0-9a-zA-Z]{3,}/) ||
+                                         path.match(/\/pd\/[^\/]+$/) ||
+                                         path.match(/\d{5,}\/\d{5,}/) ||
+                                         href.includes('product_id=') ||
+                                         href.includes('productid=') ||
+                                         href.includes('item=') ||
+                                         href.includes('sku=') ||
+                                         href.match(/[?&]color=/i) ||
+                                         href.match(/[?&]size=/i) ||
+                                         path.includes('/review') ||
+                                         (absoluteUrl.hostname.includes('amazon.') && (path.includes('/dp/') || path.includes('/gp/product/'))) || 
+                                         (absoluteUrl.hostname.includes('ebay.') && path.includes('/itm/')) ||
+                                         (absoluteUrl.hostname.includes('walmart.') && path.includes('/ip/')) ||
+                                         (absoluteUrl.hostname.includes('target.') && path.match(/\/-\/A-\d+/)) ||
+                                         (absoluteUrl.hostname.includes('bestbuy.') && path.includes('/site/')) ||
+                                         (absoluteUrl.hostname.includes('etsy.') && path.includes('/listing/')) ||
+                                         (absoluteUrl.hostname.includes('zappos.') && path.includes('/product/')) ||
+                                         (absoluteUrl.hostname.includes('dickssportinggoods.') && 
+                                          (path.includes('/p/') || href.match(/[?&]color=/i) || path.match(/\/[a-z0-9]{5,}\/[a-z0-9]{5,}/))));
+                                      
+                                      const newPage = {
+                                        url: url,
+                                        title: `Product: ${absoluteUrl.hostname}`,
+                                        type: isProductUrl ? 'external-product' : 'unknown-link'
+                                      };
+                                      
+                                      // Add to subpages if not already there
+                                      if (!subpages.some(page => page.url === url)) {
+                                        setSubpages(prev => [...prev, newPage]);
+                                        // Save to localStorage
+                                        localStorage.setItem('brandWebsiteSubpages', JSON.stringify([...subpages, newPage]));
+                                        toast.success(`URL added as ${formatType(newPage.type)}`);
+                                      } else {
+                                        toast.info('URL already in list');
+                                      }
+                                      (e.target as HTMLInputElement).value = '';
+                                    } catch (error) {
+                                      toast.error('Invalid URL format');
+                                    }
+                                  }
+                                }
+                              }}
+                            />
+                            <Button variant="outline" onClick={() => {
+                              const input = document.getElementById('direct-product-url') as HTMLInputElement;
+                              const inputUrl = input.value;
+                              if (inputUrl) {
+                                const url = validateUrl(inputUrl);
+                                try {
+                                  const absoluteUrl = new URL(url);
+                                  const path = absoluteUrl.pathname.toLowerCase();
+                                  const href = absoluteUrl.href.toLowerCase();
+                                  
+                                  // Use the same product detection logic
+                                  const isProductUrl = 
+                                    (path.includes('/p/') || 
+                                     path.match(/\/product[-_]?[0-9a-zA-Z]{3,}/) ||
+                                     path.match(/\/products\/[^\/]+$/) ||
+                                     path.match(/\/item[-_]?[0-9a-zA-Z]{3,}/) ||
+                                     path.match(/\/pd\/[^\/]+$/) ||
+                                     path.match(/\d{5,}\/\d{5,}/) ||
+                                     href.includes('product_id=') ||
+                                     href.includes('productid=') ||
+                                     href.includes('item=') ||
+                                     href.includes('sku=') ||
+                                     href.match(/[?&]color=/i) ||
+                                     href.match(/[?&]size=/i) ||
+                                     path.includes('/review') ||
+                                     (absoluteUrl.hostname.includes('amazon.') && (path.includes('/dp/') || path.includes('/gp/product/'))) || 
+                                     (absoluteUrl.hostname.includes('ebay.') && path.includes('/itm/')) ||
+                                     (absoluteUrl.hostname.includes('walmart.') && path.includes('/ip/')) ||
+                                     (absoluteUrl.hostname.includes('target.') && path.match(/\/-\/A-\d+/)) ||
+                                     (absoluteUrl.hostname.includes('bestbuy.') && path.includes('/site/')) ||
+                                     (absoluteUrl.hostname.includes('etsy.') && path.includes('/listing/')) ||
+                                     (absoluteUrl.hostname.includes('zappos.') && path.includes('/product/')) ||
+                                     (absoluteUrl.hostname.includes('dickssportinggoods.') && 
+                                      (path.includes('/p/') || href.match(/[?&]color=/i) || path.match(/\/[a-z0-9]{5,}\/[a-z0-9]{5,}/))));
+                                  
+                                  const newPage = {
+                                    url: url,
+                                    title: `Product: ${absoluteUrl.hostname}`,
+                                    type: isProductUrl ? 'external-product' : 'unknown-link'
+                                  };
+                                  
+                                  // Add to subpages if not already there
+                                  if (!subpages.some(page => page.url === url)) {
+                                    setSubpages(prev => [...prev, newPage]);
+                                    // Save to localStorage
+                                    localStorage.setItem('brandWebsiteSubpages', JSON.stringify([...subpages, newPage]));
+                                    toast.success(`URL added as ${formatType(newPage.type)}`);
+                                  } else {
+                                    toast.info('URL already in list');
+                                  }
+                                  input.value = '';
+                                } catch (error) {
+                                  toast.error('Invalid URL format');
+                                }
+                              }
+                            }}>
+                              Add URL
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Enter a product URL and press Enter or click Add URL to test if it's detected as a product
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

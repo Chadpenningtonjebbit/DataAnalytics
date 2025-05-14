@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
-import { v4 as uuidv4 } from "uuid";
 import fs from 'fs';
 import path from 'path';
 import { mkdir, writeFile } from 'fs/promises';
@@ -26,6 +25,34 @@ const validDataTypes = [
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 ];
 
+// Helper function to sanitize filenames
+function sanitizeFilename(filename: string): string {
+  // Replace special characters that might cause issues in URLs or file systems
+  return filename
+    .replace(/[^a-zA-Z0-9.-]/g, '_') // Replace any non-alphanumeric or dot/dash characters with underscore
+    .replace(/_{2,}/g, '_'); // Replace multiple consecutive underscores with a single one
+}
+
+// Helper function to ensure unique filenames
+function createUniqueFilename(filename: string, existingFiles: string[] = []): string {
+  // Split filename into base and extension
+  const lastDotIndex = filename.lastIndexOf('.');
+  const base = lastDotIndex !== -1 ? filename.substring(0, lastDotIndex) : filename;
+  const extension = lastDotIndex !== -1 ? filename.substring(lastDotIndex) : '';
+  
+  // Add timestamp to ensure uniqueness
+  const timestamp = Date.now();
+  const uniqueName = `${base}_${timestamp}${extension}`;
+  
+  // Check if this name already exists in the list
+  if (existingFiles.includes(uniqueName)) {
+    // Add a random number to further ensure uniqueness in the rare case of collision
+    return `${base}_${timestamp}_${Math.floor(Math.random() * 1000)}${extension}`;
+  }
+  
+  return uniqueName;
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
@@ -49,20 +76,15 @@ export async function POST(request: Request) {
         { status: 400 }
       );
     }
-
-    // Get file extension
-    const extension = file.name.split(".").pop()?.toLowerCase() || '';
-    
-    // Generate a unique filename with original extension
-    const uniqueFileName = `${uuidv4()}.${extension}`;
     
     // Set the appropriate folder based on file type
     const folder = isImage ? 'brand-photos' : 'products';
-    const pathname = `${folder}/${uniqueFileName}`;
+    
+    // Sanitize the original filename
+    let sanitizedFilename = sanitizeFilename(file.name);
 
     if (isLocal) {
       // Local development: Store files in public directory
-      const buffer = Buffer.from(await file.arrayBuffer());
       const uploadsDir = path.join(process.cwd(), `public/uploads/${folder}`);
       
       // Create directory if it doesn't exist
@@ -72,11 +94,22 @@ export async function POST(request: Request) {
         console.error('Error creating directory:', err);
       }
       
-      const filePath = path.join(uploadsDir, uniqueFileName);
+      // Get existing files to check for name conflicts
+      const existingFiles = fs.existsSync(uploadsDir) 
+        ? fs.readdirSync(uploadsDir) 
+        : [];
+      
+      // Ensure filename is unique
+      if (existingFiles.includes(sanitizedFilename)) {
+        sanitizedFilename = createUniqueFilename(sanitizedFilename, existingFiles);
+      }
+      
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const filePath = path.join(uploadsDir, sanitizedFilename);
       await writeFile(filePath, buffer);
       
       // Return a local URL
-      const url = `/uploads/${folder}/${uniqueFileName}`;
+      const url = `/uploads/${folder}/${sanitizedFilename}`;
       
       return NextResponse.json({
         url,
@@ -87,6 +120,8 @@ export async function POST(request: Request) {
       });
     } else {
       // Production: Use Vercel Blob
+      const pathname = `${folder}/${sanitizedFilename}`;
+      
       try {
         // Add better logging for debugging
         console.log("Uploading to Vercel Blob:", pathname);
@@ -115,10 +150,21 @@ export async function POST(request: Request) {
           const uploadsDir = path.join(process.cwd(), `public/uploads/${folder}`);
           
           await mkdir(uploadsDir, { recursive: true });
-          const filePath = path.join(uploadsDir, uniqueFileName);
+          
+          // Get existing files to check for name conflicts
+          const existingFiles = fs.existsSync(uploadsDir) 
+            ? fs.readdirSync(uploadsDir) 
+            : [];
+          
+          // Ensure filename is unique
+          if (existingFiles.includes(sanitizedFilename)) {
+            sanitizedFilename = createUniqueFilename(sanitizedFilename, existingFiles);
+          }
+          
+          const filePath = path.join(uploadsDir, sanitizedFilename);
           await writeFile(filePath, buffer);
           
-          const url = `/uploads/${folder}/${uniqueFileName}`;
+          const url = `/uploads/${folder}/${sanitizedFilename}`;
           
           return NextResponse.json({
             url,

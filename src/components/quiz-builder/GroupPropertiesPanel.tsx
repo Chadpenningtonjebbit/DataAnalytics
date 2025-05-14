@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useQuizStore } from '@/store/useQuizStore';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -12,8 +12,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectGroup,
+  SelectLabel,
 } from "@/components/ui/select";
-import { FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent, QuizElement, SectionType } from '@/types';
+import { FlexDirection, FlexWrap, JustifyContent, AlignItems, AlignContent, QuizElement, SectionType, ElementType } from '@/types';
 import { PropertyGroup } from '@/components/ui/property-group';
 import { 
   PaintBucket, 
@@ -29,7 +31,12 @@ import {
   Plus,
   Minus,
   ArrowLeftRight,
-  CloudLightning
+  CloudLightning,
+  RefreshCw,
+  Tag,
+  MoreVertical,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { FlexDirectionButtonGroup } from '@/components/ui/flex-direction-button-group';
 import { JustifyContentButtonGroup } from '@/components/ui/justify-content-button-group';
@@ -57,6 +64,22 @@ import {
 } from "lucide-react";
 import { MediaPicker } from "@/components/ui/media-picker";
 import { ImageInput } from "@/components/ui/image-input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { handleRenameStyleClass, handleDuplicateStyleClass } from '@/lib/styleClassUtils';
 
 export function GroupPropertiesPanel() {
   const { 
@@ -67,11 +90,18 @@ export function GroupPropertiesPanel() {
     ungroupElements,
     updateElement,
     saveBackgroundColor,
-    restoreBackgroundColor
+    restoreBackgroundColor,
+    applyThemeToElements,
+    applyStyleClass,
+    removeStyleClass,
+    createStyleClass,
+    updateStyleClass,
+    deleteStyleClass
   } = useQuizStore();
   
   // Track which sections are expanded
   const [expandedSections, setExpandedSections] = useState({
+    styleClass: true,
     size: true,
     spacing: true,
     background: true,
@@ -98,23 +128,57 @@ export function GroupPropertiesPanel() {
   // State for layout controls visibility
   const [layoutVisible, setLayoutVisible] = useState(false);
   
-  // Helper function to find an element by ID
-  const findElementById = (id: string): QuizElement | undefined => {
-    for (const screen of quiz.screens) {
-      for (const sectionId of ['header', 'body', 'footer'] as const) {
-        const section = screen.sections[sectionId];
-        const element = section.elements.find(e => e.id === id);
-        if (element) return element;
+  // State for style class dialogs
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newClassName, setNewClassName] = useState('');
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [classToRename, setClassToRename] = useState<string | null>(null);
+  const [newClassNameForRename, setNewClassNameForRename] = useState('');
+  
+  // Get the selected group element
+  const [groupElement, setGroupElement] = useState<QuizElement | null>(null);
+  
+  // Get current screen
+  const currentScreen = quiz.screens[quiz.currentScreenIndex];
+  
+  // Get available style classes for the selected element type
+  const availableStyleClasses = useMemo(() => {
+    if (!groupElement) return [];
+    return quiz.styleClasses?.filter(
+      styleClass => styleClass.elementType === groupElement.type
+    ) || [];
+  }, [quiz.styleClasses, groupElement]);
+  
+  // Find the selected group element
+  useEffect(() => {
+    if (selectedElementIds.length !== 1) return;
+    
+    const elementId = selectedElementIds[0];
+    
+    // Look for the element in the current screen
+    for (const sectionKey of Object.keys(currentScreen.sections) as SectionType[]) {
+      const section = currentScreen.sections[sectionKey];
+      
+      // Check direct children of the section
+      const foundElement = section.elements.find((el: QuizElement) => 
+        el.id === elementId && (el.isGroup || el.type === 'product')
+      );
+      
+      if (foundElement) {
+        setGroupElement(foundElement);
+        return;
       }
     }
-    return undefined;
-  };
+    
+    // If not found, set to null
+    setGroupElement(null);
+  }, [selectedElementIds, currentScreen, quiz]);
   
-  // Get current screen and group
-  const currentScreen = quiz.screens[quiz.currentScreenIndex];
-  const group = selectedElementIds.length === 1 ? findElementById(selectedElementIds[0]) : null;
-  const styles = group?.styles || {};
-  const layout = group?.layout || { 
+  // If no group element is selected, show nothing
+  if (!groupElement) return null;
+  
+  const styles = groupElement.styles || {};
+  const layout = groupElement.layout || { 
     direction: 'row', 
     wrap: 'wrap', 
     justifyContent: 'flex-start', 
@@ -124,19 +188,19 @@ export function GroupPropertiesPanel() {
   };
   
   const handleStyleChange = (property: string, value: string) => {
-    updateGroupStyles(group!.id, {
+    updateGroupStyles(groupElement!.id, {
       [property]: value,
     });
   };
   
   const handleLayoutChange = <K extends keyof typeof layout>(property: K, value: typeof layout[K]) => {
-    updateGroupLayout(group!.id, {
+    updateGroupLayout(groupElement!.id, {
       [property]: value,
     });
   };
   
   const handleUngroup = () => {
-    ungroupElements(group!.id);
+    ungroupElements(groupElement!.id);
   };
   
   // Convert gap from px to number for slider
@@ -227,7 +291,7 @@ export function GroupPropertiesPanel() {
     if (styles.backgroundColor) {
       // Save the current background color before removing it
       if (selectedElementIds.length === 1) {
-        const element = findElementById(selectedElementIds[0]);
+        const element = groupElement;
         if (element) {
           saveBackgroundColor(currentScreen.id, element.id, styles.backgroundColor);
         }
@@ -237,7 +301,7 @@ export function GroupPropertiesPanel() {
     } else {
       // Restore previous background color or use theme default
       if (selectedElementIds.length === 1) {
-        const element = findElementById(selectedElementIds[0]);
+        const element = groupElement;
         if (element) {
           restoreBackgroundColor(currentScreen.id, element.id);
         }
@@ -247,8 +311,282 @@ export function GroupPropertiesPanel() {
     }
   };
   
+  // Handle applying a style class to the selected element
+  const handleApplyStyleClass = (classId: string) => {
+    if (selectedElementIds.length === 0) return;
+    
+    // If "theme" is selected, reset to theme defaults
+    if (classId === 'theme') {
+      // Remove the style class
+      removeStyleClass(selectedElementIds);
+      
+      // Apply theme styles to the element
+      applyThemeToElements({ 
+        elementIds: selectedElementIds,
+        resetAll: true
+      });
+      
+      // For product elements, also apply theme to children
+      if (groupElement && groupElement.type === 'product' && groupElement.children) {
+        // Get each child ID
+        const childIds = groupElement.children.map(child => child.id);
+        
+        // Apply theme to elements
+        applyThemeToElements({
+          elementIds: childIds,
+          resetAll: true
+        });
+        
+        // Special handling for common elements
+        const imageElement = groupElement.children.find(child => child.type === 'image');
+        const buttonElement = groupElement.children.find(child => child.type === 'button');
+        
+        // Update image with special style overrides
+        if (imageElement) {
+          updateElement(imageElement.id, {
+            styles: {
+              ...imageElement.styles,
+              width: '100%',
+              height: 'auto',
+              borderRadius: '8px',
+              aspectRatio: '1',
+              objectFit: 'cover'
+            }
+          });
+        }
+        
+        // Update button with special style overrides
+        if (buttonElement) {
+          updateElement(buttonElement.id, {
+            styles: {
+              ...buttonElement.styles,
+              width: '100%',
+              marginTop: '8px'
+            }
+          });
+        }
+      }
+      
+      return;
+    }
+    
+    // Apply the selected style class
+    applyStyleClass(selectedElementIds, classId);
+  };
+  
+  // Handle creating a new style class
+  const handleCreateStyleClass = () => {
+    if (!groupElement || !newClassName.trim()) return;
+    
+    // Create a new style class based on the current element
+    const newClassId = createStyleClass(newClassName.trim(), groupElement.type, { ...groupElement.styles });
+    
+    // Reset the input and close the dialog
+    setNewClassName('');
+    setIsDialogOpen(false);
+    
+    // Automatically apply the new class to the selected element
+    if (newClassId && selectedElementIds.length > 0) {
+      applyStyleClass(selectedElementIds, newClassId);
+    }
+  };
+  
+  // Handle renaming a style class
+  const handleRenameClass = () => {
+    const success = handleRenameStyleClass(
+      classToRename,
+      newClassNameForRename,
+      availableStyleClasses,
+      updateStyleClass
+    );
+    
+    if (success) {
+      // Close the dialog and reset state
+      setClassToRename(null);
+      setNewClassNameForRename('');
+      setIsRenameDialogOpen(false);
+    }
+  };
+  
+  // Handle duplicating a style class
+  const handleDuplicateClass = (classId: string) => {
+    handleDuplicateStyleClass(
+      classId,
+      availableStyleClasses,
+      createStyleClass
+    );
+  };
+  
   return (
     <div className="space-y-0">
+      {/* Dialog for creating new style class */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Create New Style Class</DialogTitle>
+            <DialogDescription>
+              Create a new style class based on the current element. Changes to any element using this class will affect all others.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
+              id="class-name"
+              value={newClassName}
+              onChange={(e) => setNewClassName(e.target.value)}
+              placeholder="Enter class name"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewClassName('');
+                setIsDialogOpen(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateStyleClass}
+              disabled={!newClassName.trim()}
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog for renaming style class */}
+      <Dialog open={isRenameDialogOpen} onOpenChange={setIsRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Rename Style Class</DialogTitle>
+            <DialogDescription>
+              Enter a new name for this style class.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <Input
+              id="rename-class-name"
+              value={newClassNameForRename}
+              onChange={(e) => setNewClassNameForRename(e.target.value)}
+              placeholder="Enter new class name"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewClassNameForRename('');
+                setIsRenameDialogOpen(false);
+                setClassToRename(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleRenameClass}
+              disabled={!newClassNameForRename.trim()}
+            >
+              Rename
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Style Classes */}
+      <PropertyGroup 
+        title="Styles" 
+        icon={<Tag className="h-4 w-4" />}
+        expanded={expandedSections.styleClass}
+        onToggle={() => toggleSection('styleClass')}
+      >
+        <div className="space-y-2">
+          <Label>Element Style</Label>
+          <div className="flex items-center gap-2">
+            <div className="flex-1">
+              <Select
+                value={groupElement?.styleClass || 'theme'}
+                onValueChange={handleApplyStyleClass}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a style class" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="theme">Theme Default</SelectItem>
+                  {availableStyleClasses.map((styleClass) => (
+                    <div key={styleClass.id} className="relative flex items-center group">
+                      <SelectItem value={styleClass.id} className="flex-1 pr-8">
+                        {styleClass.name}
+                      </SelectItem>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity bg-muted"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setClassToRename(styleClass.id);
+                              setNewClassNameForRename(styleClass.name);
+                              setIsRenameDialogOpen(true);
+                            }}
+                          >
+                            <Pencil className="mr-2 h-4 w-4" />
+                            <span>Rename</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              handleDuplicateClass(styleClass.id);
+                            }}
+                          >
+                            <Copy className="mr-2 h-4 w-4" />
+                            <span>Duplicate</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => {
+                              deleteStyleClass(styleClass.id);
+                            }}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={() => setIsDialogOpen(true)}
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  Create new style
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+        </div>
+      </PropertyGroup>
+      
       {/* Size Controls */}
       <PropertyGroup 
         title="Size" 
